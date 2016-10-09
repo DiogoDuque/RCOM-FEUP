@@ -138,7 +138,7 @@ int sendFile(int fd, char* fileName) {
 
 
 int main(int argc, char** argv) {
-	char * fileName = "pinguim.gif";
+	char * fileName = "pinguim - Copy.gif";
 
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
@@ -167,7 +167,7 @@ int main(int argc, char** argv) {
 	if (fd <= 0)
 		return -1;
 
-	switch(sendFile(fd, "pinguim.gif")) {
+	switch(sendFile(fd, fileName)) {
 		case 0:
 			printf("File sent successfully!\n");
 			break;
