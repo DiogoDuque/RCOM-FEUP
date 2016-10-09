@@ -75,7 +75,6 @@ int main(int argc, char** argv)
 
       buf[res]='\0';          /* so we can printf... */
       printf("received:%s:%d\n", buf, res);
-      if (buf[0]=='z') STOP=TRUE;
 
 	  int size=strlen(buf);
 	  int res2;
@@ -83,6 +82,8 @@ int main(int argc, char** argv)
 		res2=write(fd,buf,size);
 	  else res2=write(fd,buf,1);
 	  printf("bytes written:%d\n\n",res2);
+
+	  if (buf[0]=='z') STOP=TRUE;
     }
 
 

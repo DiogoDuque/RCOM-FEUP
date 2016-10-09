@@ -87,7 +87,7 @@ int main(int argc, char** argv)
 
 
     res = write(fd,buf,size);
-    printf("%d bytes written\n", res);
+    printf("%d bytes written\n\n\n", res);
 
 	sleep(1); //assim nao le o que acabou de enviar
 
@@ -95,7 +95,9 @@ int main(int argc, char** argv)
 		int res2 = read(fd, buf,1);
 
 		buf[res2]='\0';
-		printf("received:%s:%d\n", buf, res2);
+		printf("received:%s:%d\n\n", buf, res2);
+		if(strcmp(buf,"") == 0)
+			break;
 
 	}
 
