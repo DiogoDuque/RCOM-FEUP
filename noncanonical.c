@@ -86,13 +86,6 @@ int stateMachineSET(int fd) {
 }
 
 
-void llopen(int fd) {
-	while(stateMachineSET(fd) != TRUE){
-		printf("RESTARTING STATE MACHINE\n");
-	}
-	printf("EXITED STATE MACHINE\n");
-}
-
 int main(int argc, char** argv)
 {
     if ( (argc < 2) || 

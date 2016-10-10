@@ -25,6 +25,13 @@ int sendMessage(int fd, char* msg) {
 
 }
 
+void llopen(int fd, int mode) {
+	//while(stateMachineSET(fd) != TRUE){
+		//printf("RESTARTING STATE MACHINE\n");
+	//}
+	//printf("EXITED STATE MACHINE\n");
+}
+
 int llwrite(int fd, char* buffer, int length){
 
 }
