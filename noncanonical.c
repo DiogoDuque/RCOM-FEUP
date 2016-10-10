@@ -51,26 +51,32 @@ void init(char* port) {
 }
 
 char receiveMessage() {
-	char buf[16];
+	char buf[1];
 	buf[0]='\0';
-    res = read(fd,buf,1);   
+    res = read(fd,buf,1);
 
-   	buf[res]='\0';          /* so we can printf... */
-   	//printf("received:%s:%d\n", buf, res);
+   	printf("received:%s:%d\n", buf, res);
 
-	int res2=write(fd,buf,1);
+	//int res2=write(fd,buf,1);
 	//printf("bytes written:%d\n\n",res2);
 
+	if(buf[0]=='\0'){
+		res = read(fd,buf,1); printf("READ \\0\n");}
+
 	return buf[0];
+}
+
+void sendUA(){
+	printf("----------------\nwill send UA when it's done!\n----------------\n");
 }
 
 void printHex(char* hexMsg) {
 	char hexArray[255];
 	strcpy(hexArray,hexMsg);
-	printf("HEX ARRAY (%lu):",strlen(hexArray));
+	printf("HEX ARRAY(%lu):",strlen(hexArray));
 
-	int i;
-	for(i=0; i<strlen(hexMsg); i++) {
+	int i, size=strlen(hexArray);
+	for(i=0; i<size; i++) {
 		printf(" 0x%02X",hexArray[i]);
 	}
 	printf("\n\n");
@@ -79,9 +85,9 @@ void printHex(char* hexMsg) {
 /*
 	STATE MACHINE
 */
-int stateFirst7E();
-int stateReading();
-int stateLast7E();
+int stateFirstF();
+int stateReading(char* msg);
+int stateLastF(char* msg);
 
 int stateStart() {
 	char info = receiveMessage();
@@ -90,12 +96,12 @@ int stateStart() {
 
 	printf("start: 0x%02X\n",info);
 
-	if(info=!0x7E)
+	if(info!=0x7E)
 		return stateStart();
-	else return stateFirst7E();
+	else return stateFirstF();
 }
 
-int stateFirst7E() {
+int stateFirstF() {
 	char info = receiveMessage();
 	if(info == '\0')
 		return FALSE;
@@ -103,10 +109,11 @@ int stateFirst7E() {
 	printf("first7E: 0x%02X\n",info);
 
 	if(info==0x7E)
-		return stateFirst7E();
+		return stateFirstF();
 	else {
 		char msg[255];
 		msg[0]=0x7E;
+		msg[1]=info;
 		return stateReading(msg);
 	}
 }
@@ -116,25 +123,47 @@ int stateReading(char* msg) {
 	if(info == '\0')
 		return FALSE;
 
-	printf("reading: 0x%02X\n",info);
-	printHex(msg);
-
-	//char msg2[255];
-	//strcpy(msg2,msg);
-	char infoArray[16];
+//CAT
+	char infoArray[1];
 	infoArray[0]=info;
 	strcat(msg,infoArray);
-	if(info=!0x7E)
+
+//PRINT
+	printf("reading: 0x%02X; ",info);
+	printHex(msg);
+
+//NEXT STATE
+	if(info!=0x7E)
 		return stateReading(msg);
-	else return stateLast7E(msg);
+	else return stateLastF(msg);
 }
 
-int stateLast7E(char* msg) {
-	char lastHex[4];
-	lastHex[0]=0x7E;
-	strcat(msg,(char*)lastHex);
+int stateLastF(char* msg) {
+//PRINT	
+	printf("full message: ");
 	printHex(msg);
-	return TRUE; //NOT FINISHED
+
+//ANALYZE LEN
+	if(strlen(msg) != 5) {
+		printf("length is incorrect. expected 5, was %lu\n",strlen(msg));
+		return FALSE;
+	}
+
+//ANALYZE BCC1
+	if(msg[3] != (msg[1]^msg[2])) {
+		printf("BCC1 != (A XOR C)\n");
+		return FALSE;
+	}
+
+//ANALYZE C
+	if(msg[2]==0x03)
+		sendUA();
+	else {
+		printf("C is incorrect. expected 0x03, was 0x%02X\n",msg[2]);
+		return FALSE;
+	}
+	
+	return TRUE;
 }
 
 int main(int argc, char** argv)
@@ -148,7 +177,9 @@ int main(int argc, char** argv)
 
 	init(argv[1]);
 
-	stateStart();
+	while(stateStart() != TRUE) {
+		printf("RESTARTING STATE MACHINE\n");
+	}
 	printf("EXITED STATE MACHINE\n");
 
     tcsetattr(fd,TCSANOW,&oldtio);
