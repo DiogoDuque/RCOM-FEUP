@@ -55,7 +55,7 @@ char receiveMessage() {
 	buf[0]='\0';
     res = read(fd,buf,1);
 
-   	printf("received:%s:%d\n", buf, res);
+   	//printf("received:%s:%d\n", buf, res);
 
 	//int res2=write(fd,buf,1);
 	//printf("bytes written:%d\n\n",res2);
@@ -85,85 +85,91 @@ void printHex(char* hexMsg) {
 /*
 	STATE MACHINE
 */
-int stateFirstF();
-int stateReading(char* msg);
-int stateLastF(char* msg);
+typedef enum {START, FIRST_F, READING, LAST_F} state;
 
-int stateStart() {
-	char info = receiveMessage();
-	if(info == '\0')
-		return FALSE;
+int stateMachine() {
+	char msg[255];
+	state st = START;
+	int counter=0;
 
-	printf("start: 0x%02X\n",info);
+	while(TRUE){
+		char info;
+		if(st!=LAST_F) {
+		 	info=receiveMessage();
 
-	if(info!=0x7E)
-		return stateStart();
-	else return stateFirstF();
-}
+			if(info == '\0')
+				return FALSE;
+			printf("received 0x%02X\n",info);
+		}
 
-int stateFirstF() {
-	char info = receiveMessage();
-	if(info == '\0')
-		return FALSE;
+		switch(st) {
 
-	printf("first7E: 0x%02X\n",info);
+		case START:
+			printf("START\n");
+			if(info!=0x7E)
+				st=START;
+			else st=FIRST_F;
+			break;
 
-	if(info==0x7E)
-		return stateFirstF();
-	else {
-		char msg[255];
-		msg[0]=0x7E;
-		msg[1]=info;
-		return stateReading(msg);
+		case FIRST_F:
+			printf("FIRST_F\n");
+			if(info==0x7E)
+				st=FIRST_F;
+			else {
+				st=READING;
+				msg[0]=0x7E;
+				msg[1]=info;
+				counter=2;
+			}
+			break;
+
+		case READING:
+			printf("READING\n");
+			msg[counter]=info;
+			counter++;
+			if(info!=0x7E)
+				st=READING;
+			else st=LAST_F;
+			break;
+
+		case LAST_F:
+			printf("LAST_F\n");
+			if(counter != 5) { //ANALYZE STRLEN
+				printf("length is incorrect. expected 5, was %lu\n",strlen(msg));
+				return FALSE;
+			}
+
+			if(msg[3] != (msg[1]^msg[2])) { //ANALYZE BCC1
+				printf("BCC1 != (A XOR C)\n");
+				return FALSE;
+			}
+
+			if(msg[2]==0x03) //ANALYZE C
+				sendUA();
+			else {
+				printf("C is incorrect. expected 0x03, was 0x%02X\n",msg[2]);
+				return FALSE;
+			}
+		
+			sendUA();
+			return TRUE;
+
+
+		default:
+			printf("ERROR: NO STATE FOUND\n");
+			return FALSE;
+		}
+
+		printHex(msg);
 	}
 }
 
-int stateReading(char* msg) {
-	char info = receiveMessage();
-	if(info == '\0')
-		return FALSE;
 
-//CAT
-	char infoArray[1];
-	infoArray[0]=info;
-	strcat(msg,infoArray);
-
-//PRINT
-	printf("reading: 0x%02X; ",info);
-	printHex(msg);
-
-//NEXT STATE
-	if(info!=0x7E)
-		return stateReading(msg);
-	else return stateLastF(msg);
-}
-
-int stateLastF(char* msg) {
-//PRINT	
-	printf("full message: ");
-	printHex(msg);
-
-//ANALYZE LEN
-	if(strlen(msg) != 5) {
-		printf("length is incorrect. expected 5, was %lu\n",strlen(msg));
-		return FALSE;
+void llopen() {
+	while(stateMachine() != TRUE){
+		printf("RESTARTING STATE MACHINE\n");
 	}
-
-//ANALYZE BCC1
-	if(msg[3] != (msg[1]^msg[2])) {
-		printf("BCC1 != (A XOR C)\n");
-		return FALSE;
-	}
-
-//ANALYZE C
-	if(msg[2]==0x03)
-		sendUA();
-	else {
-		printf("C is incorrect. expected 0x03, was 0x%02X\n",msg[2]);
-		return FALSE;
-	}
-	
-	return TRUE;
+	printf("EXITED STATE MACHINE\n");
 }
 
 int main(int argc, char** argv)
@@ -177,10 +183,7 @@ int main(int argc, char** argv)
 
 	init(argv[1]);
 
-	while(stateStart() != TRUE) {
-		printf("RESTARTING STATE MACHINE\n");
-	}
-	printf("EXITED STATE MACHINE\n");
+	llopen();
 
     tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);
