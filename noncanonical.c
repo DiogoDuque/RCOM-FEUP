@@ -1,5 +1,6 @@
 /*Non-Canonical Input Processing*/
 #include "aux.h"
+#include "dataLayer.h"
 
 typedef enum {START, FIRST_F, READING, LAST_F} state;
 
@@ -7,7 +8,7 @@ void sendUA(){
 	printf("----------------\nwill send UA when it's done!\n----------------\n");
 }
 
-int stateMachine() {
+int stateMachineSET(int fd) {
 	char msg[255];
 	state st = START;
 	int counter=0;
@@ -15,7 +16,7 @@ int stateMachine() {
 	while(TRUE){
 		char info;
 		if(st!=LAST_F) {
-		 	info=receiveMessage();
+		 	info=receiveMessage(fd);
 
 			if(info == '\0')
 				return FALSE;
@@ -85,8 +86,8 @@ int stateMachine() {
 }
 
 
-void llopen() {
-	while(stateMachine() != TRUE){
+void llopen(int fd) {
+	while(stateMachineSET(fd) != TRUE){
 		printf("RESTARTING STATE MACHINE\n");
 	}
 	printf("EXITED STATE MACHINE\n");
@@ -101,9 +102,9 @@ int main(int argc, char** argv)
       exit(1);
     }
 
-	init(argv[1]);
+	int fd = init(argv[1]);
 
-	llopen();
+	llopen(fd);
 
     tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);

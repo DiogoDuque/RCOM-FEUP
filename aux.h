@@ -1,7 +1,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -12,11 +11,10 @@
 #define FALSE 0
 #define TRUE 1
 
-int fd,c, res;
 struct termios oldtio,newtio;
 
-void init(char* port) {
-	fd = open(port, O_RDWR | O_NOCTTY );
+int init(char* port) {
+	int fd = open(port, O_RDWR | O_NOCTTY );
     if (fd <0) {perror(port); exit(-1); }
 
     if ( tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
@@ -43,6 +41,7 @@ void init(char* port) {
     }
 
     printf("New termios structure set\n\n");
+	return fd;
 }
 
 void printHex(char* hexMsg) {
@@ -57,38 +56,4 @@ void printHex(char* hexMsg) {
 	printf("\n\n");
 }
 
-char receiveMessage() {
-	char buf[16];
-	buf[0]='\0';
-    res = read(fd,buf,1);   
 
-   	buf[res]='\0';          /* so we can printf... */
-
-	int res2=write(fd,buf,1);
-
-	return buf[0];
-}
-
-//tries to send a message. if was properly sent, returns TRUE; otherwise returns FALSE
-int sendMessage(char* msg) {
-
-	int size = strlen(msg);
-    int res = write(fd,msg,size);
-    printf("writing: «%s»; written %d of %d written\n\n\n", msg,res,size);
-
-	if(res==size) return TRUE;
-	else return FALSE;
-
-
-	/*char buf[255];
-	while(TRUE) {
-		int res2 = read(fd, buf,1);
-		buf[res2]='\0';
-		printf("received:%s:%d\n\n", buf, res2);
-
-		if(strcmp(buf,"") == 0)
-			break;
-
-	}*/
-
-}
