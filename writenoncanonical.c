@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #define BAUDRATE B38400
 #define MODEMDEVICE "/dev/ttyS1"
@@ -17,6 +18,7 @@
 
 volatile int STOP=FALSE;
 
+int flag=1, conta=1;
 int fd,c, res;
 struct termios oldtio,newtio;
 
@@ -55,7 +57,7 @@ int sendMessage(char* msg) {
 
 	int size = strlen(msg);
     int res = write(fd,msg,size);
-    printf("writing: «%s»; written %d of %d written\n\n\n", msg,res,size);
+    printf("writing: ï¿½%sï¿½; written %d of %d written\n\n\n", msg,res,size);
 
 	if(res==size) return TRUE;
 	else return FALSE;
@@ -74,6 +76,12 @@ int sendMessage(char* msg) {
 
 }
 
+void atende() {
+    printf("alarme # %d\n", conta);
+    flag=1;
+    conta++;
+}
+
 void printHex(char* hexMsg) {
 	char hexArray[255];
 	strcpy(hexArray,hexMsg);
@@ -87,46 +95,36 @@ void printHex(char* hexMsg) {
 }
 
 int main(int argc, char** argv) {
+
     
-    if ( (argc < 2) || 
+    /*if ( (argc < 2) || 
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
-  	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
-      printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
-      exit(1);
+  	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {*/
+    if (argc < 2) {
+        printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
+        exit(1);
     }
     
+    (void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
 	init(argv[1]);
 
-	char msg[255];
-	msg[0]=0x7E;
-	msg[1]=0x7E;	
-	msg[2]=0x03;
-	msg[3]=0x04;
-	msg[4]=0x75;
-	msg[5]=0x7E;
-	printHex(msg);
-	//while(TRUE) {
-		sendMessage(msg);
-		sleep(3); //assim nao le o que acabou de enviar
-	//}
-	
- 
-
-  /* 
-    O ciclo FOR e as instruções seguintes devem ser alterados de modo a respeitar 
-    o indicado no guião 
-  */
-
-
+    while(conta < 4) {
+        if(flag) {
+            alarm(3);
+            flag=0;
+            printf("Foi chamado ahahah :D");
+        }
+    }
+    alarm(0);
+    printf("Count: %d", conta);
+    //llopen();
+    //sleep(3);
 
    
-   if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-      perror("tcsetattr");
-      exit(-1);
+    if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+        perror("tcsetattr");
+        exit(-1);
     }
-
-
-
 
     close(fd);
     return 0;
