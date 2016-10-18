@@ -13,8 +13,7 @@ void atende() {
     conta++;
 }
 
-int main(int argc, char** argv) {
-    
+int main(int argc, char** argv) {    
     if ( (argc < 2) || 
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
@@ -23,33 +22,37 @@ int main(int argc, char** argv) {
     }
     
     (void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
-	int fd = init(argv[1]);
-	char msg[16];
-	msg[0]=0x7E;
-	msg[1]=0x03;
-	msg[2]=0x03;
-	msg[3]=0x00;
-	msg[4]=0x7E;
+	int fd=-1;
 
     while(conta < 4) {
         if(flag) {
-			sendMessage(fd,msg);
+			fd=llopen(argv[1], TRANSMITTER);
             alarm(3);
             flag=0;
-            printf("Foi chamado ahahah :D");
         }
     }
     alarm(0);
     printf("Count: %d", conta);
-    //llopen();
     //sleep(3);
 
-   
-    if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-        perror("tcsetattr");
-        exit(-1);
-    }
+	switch(llclose(fd)){
+	case 0:
+		printf("Closed receiver successfully!\n");
+		return 0;
+	
+	case 1:
+		printf("Error closing file descriptor...\n");
+		return 1;
 
-    close(fd);
-    return 0;
+	case 2:
+		printf("Error with tcsetattr()...\n");
+		return 2;
+
+	case 3:
+		printf("Error closing file descriptor and with tcsetattr()...\n");
+		return 3;
+
+	default:
+		return -1;
+	}
 }
