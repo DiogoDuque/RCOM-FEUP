@@ -67,23 +67,33 @@ int sendMessage(int fd, char* msg) {
 	else return FALSE;
 }
 
-void sendSET(int fd){
-	char msg[16];
-	msg[0]=0x7E;
-	msg[1]=0x03;
-	msg[2]=0x03;
-	msg[3]=0x04;
-	msg[4]=0x7E;
+void sendSET(int fd){ //cmd
+	char msg[5];
+	msg[0]=0x7E; //F
+	msg[1]=0x03; //A
+	msg[2]=0x03; //C
+	msg[3]=0x04; //BCC1
+	msg[4]=0x7E; //F
 	sendMessage(fd,msg);
 }
 
-void sendUA(int fd){
-	char msg[16];
-	msg[0]=0x7E;
-	msg[1]=0x03;
-	msg[2]=0x07;
-	msg[3]=0x00;
-	msg[4]=0x7E;
+void sendUA(int fd, int mode){ //ans
+	char msg[5];
+	msg[0]=0x7E; //F
+	msg[1]=mode==TRANSMITTER?0x01:0x03; //A
+	msg[2]=0x07; //C
+	msg[3]=0x00; //BCC1
+	msg[4]=0x7E; //F
+	sendMessage(fd,msg);
+}
+
+void sendDISC(int fd, int mode){ //cmd
+	char msg[5];
+	msg[0]=0x7E; //F
+	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
+	msg[2]=0x03; //C
+	msg[3]=0x04; //BCC1
+	msg[4]=0x7E; //F
 	sendMessage(fd,msg);
 }
 
@@ -238,7 +248,7 @@ int llopen(char* port, int mode) {
 	int fd = init(port);
 	if(mode == RECEIVER) {
 		if(stateMachineSET(fd)==TRUE) {
-			sendUA(fd);
+			sendUA(fd,mode);
 			printf("SET received successfully!\n");
 			return fd;
 		} else {
