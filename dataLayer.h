@@ -63,9 +63,8 @@ char receiveMessage(int fd) {
 }
 
 //tries to send a message. if was properly sent, returns TRUE; otherwise returns FALSE
-int sendMessage(int fd, char* msg) {
+int sendMessage(int fd, char* msg, int size) {
 
-	int size = strlen(msg);
     int res = write(fd,msg,size);
     //printf("writing: «%s»; written %d of %d written\n\n\n", msg,res,size);
 
@@ -78,9 +77,12 @@ void sendSET(int fd){ //cmd
 	msg[0]=FLAG; //F
 	msg[1]=0x03; //A
 	msg[2]=0x03; //C
-	msg[3]=0x04; //BCC1
+	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
-	sendMessage(fd,msg);
+	printHex(msg,5);
+	if(sendMessage(fd,msg,5)==TRUE)
+		printf("SET sent successfully!\n");
+	else printf("Warning: set was not sent successfully!\n");
 }
 
 void sendUA(int fd){ //ans
@@ -90,7 +92,7 @@ void sendUA(int fd){ //ans
 	msg[2]=0x07; //C
 	msg[3]=0x00; //BCC1
 	msg[4]=FLAG; //F
-	sendMessage(fd,msg);
+	sendMessage(fd,msg,5);
 }
 
 void sendDISC(int fd){ //cmd
@@ -100,7 +102,7 @@ void sendDISC(int fd){ //cmd
 	msg[2]=0x03; //C
 	msg[3]=0x04; //BCC1
 	msg[4]=FLAG; //F
-	sendMessage(fd,msg);
+	sendMessage(fd,msg,5);
 }
 
 int stateMachineSET(int fd) {
@@ -173,7 +175,7 @@ int stateMachineSET(int fd) {
 			return FALSE;
 		}
 
-		printHex(msg);
+		printHex(msg,counter);
 	}
 }
 
@@ -246,7 +248,7 @@ int stateMachineUA(int fd) {
 			return FALSE;
 		}
 
-		printHex(msg);
+		printHex(msg, counter);
 	}
 }
 
@@ -264,6 +266,7 @@ int llopen(char* port, int flag) {
 		}
 	} else if(mode == TRANSMITTER) {
 		sendSET(fd);
+		sleep(3);
 		if(stateMachineUA(fd)==TRUE) {
 			printf("UA received successfully!\n");
 			return fd;

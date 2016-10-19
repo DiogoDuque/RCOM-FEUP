@@ -6,14 +6,12 @@
 #include <fcntl.h>
 #include <termios.h>
 
-void printHex(char* hexMsg) {
-	char hexArray[255];
-	strcpy(hexArray,hexMsg);
-	printf("HEX ARRAY(%lu):",strlen(hexArray));
+void printHex(char* hexMsg, int size) {
+	printf("HEX ARRAY:");
 
 	int i;
-	for(i=0; i<strlen(hexMsg); i++) {
-		printf(" 0x%02X",hexArray[i]);
+	for(i=0; i<size; i++) {
+		printf(" 0x%02X",hexMsg[i]);
 	}
 	printf("\n\n");
 }
