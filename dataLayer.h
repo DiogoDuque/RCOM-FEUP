@@ -17,6 +17,7 @@ struct termios oldtio,newtio;
 #define ESC7E   0x5E
 #define ESC7D   0x5D
 
+int mode;
 
 int init(char* port) {
 	int fd = open(port, O_RDWR | O_NOCTTY );
@@ -74,31 +75,31 @@ int sendMessage(int fd, char* msg) {
 
 void sendSET(int fd){ //cmd
 	char msg[5];
-	msg[0]=0x7E; //F
+	msg[0]=FLAG; //F
 	msg[1]=0x03; //A
 	msg[2]=0x03; //C
 	msg[3]=0x04; //BCC1
-	msg[4]=0x7E; //F
+	msg[4]=FLAG; //F
 	sendMessage(fd,msg);
 }
 
-void sendUA(int fd, int mode){ //ans
+void sendUA(int fd){ //ans
 	char msg[5];
-	msg[0]=0x7E; //F
+	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x01:0x03; //A
 	msg[2]=0x07; //C
 	msg[3]=0x00; //BCC1
-	msg[4]=0x7E; //F
+	msg[4]=FLAG; //F
 	sendMessage(fd,msg);
 }
 
-void sendDISC(int fd, int mode){ //cmd
+void sendDISC(int fd){ //cmd
 	char msg[5];
-	msg[0]=0x7E; //F
+	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
 	msg[2]=0x03; //C
 	msg[3]=0x04; //BCC1
-	msg[4]=0x7E; //F
+	msg[4]=FLAG; //F
 	sendMessage(fd,msg);
 }
 
@@ -249,7 +250,8 @@ int stateMachineUA(int fd) {
 	}
 }
 
-int llopen(char* port, int mode) {
+int llopen(char* port, int flag) {
+	mode = flag;
 	int fd = init(port);
 	if(mode == RECEIVER) {
 		if(stateMachineSET(fd)==TRUE) {
@@ -349,6 +351,12 @@ int llread (int fd, char* buffer) {
 }
 
 int llclose(int fd) {
+	if(mode==TRANSMITTER) {
+		sendDISC(fd);
+		//wait for DISC
+		sendUA(fd);
+	}
+
 	int ret=0;
 	if(tcsetattr(fd,TCSANOW,&oldtio) != 0)
 		ret += 2;
