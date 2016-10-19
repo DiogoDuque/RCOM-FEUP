@@ -7,12 +7,12 @@
 #include <termios.h>
 #include <signal.h>
 
-int alarmFlag=0, alarmCounter=1;
+int alarmFlag=0, alarmCounter=0;
 
 void atende() {
+    alarmCounter++;
     printf("alarme # %d\n", alarmCounter);
     alarmFlag=1;
-    alarmCounter++;
 }
 
 void printHex(char* hexMsg, int size) {

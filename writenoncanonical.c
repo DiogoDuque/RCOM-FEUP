@@ -83,10 +83,12 @@ int main(int argc, char** argv) {
             alarm(3);
             alarmFlag=0;
 			fd=llopen(argv[1], TRANSMITTER);
-			if(fd!=-1) break;
+			if(fd>0) break;
         }
     }
     alarm(0);
+	alarmCounter=0;
+	alarmFlag=1;
 
     FILE * f1 = fopen("file.txt", "r");
     int fsize;

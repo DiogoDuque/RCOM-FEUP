@@ -32,6 +32,7 @@ struct termios oldtio,newtio;
 
 int mode;
 int Nr = 0;
+int flags; //for nonblock write
 
 int init(char* port) {
 	int fd = open(port, O_RDWR | O_NOCTTY );
@@ -295,6 +296,97 @@ int stateMachineUA(int fd) {
 	}
 }
 
+/**
+ * return = -2 -> alarmed
+ *			-1 -> trama error
+ *			0 -> REJ R(0)
+ *			1 -> REJ R(1)
+ *			2 -> RR R(0)
+ *			3 -> RR R(1)
+ */
+int stateMachineR(int fd) {
+	char msg[255];
+	state st = START;
+	int counter=0;
+
+	while(TRUE){
+		char info;
+		if(st!=LAST_F) {
+		 	info=receiveMessage(fd);
+			if(alarmFlag) return -2;
+			}
+			//printf("received 0x%02X\n",info);
+
+		switch(st) {
+
+		case START:
+			//printf("START\n");
+			if(info!=0x7E)
+				st=START;
+			else st=FIRST_F;
+			break;
+
+		case FIRST_F:
+			//printf("FIRST_F\n");
+			if(info==0x7E)
+				st=FIRST_F;
+			else {
+				st=READING;
+				msg[0]=0x7E;
+				msg[1]=info;
+				counter=2;
+			}
+			break;
+
+		case READING:
+			//printf("READING\n");
+			msg[counter]=info;
+			counter++;
+			if(info!=0x7E)
+				st=READING;
+			else st=LAST_F;
+			break;
+
+		case LAST_F:
+			//printf("LAST_F\n");
+			printf("RECEIVING R: ");
+			printHex(msg,counter);
+
+			if(counter != 5) { //ANALYZE STRLEN
+				printf("RECEIVING R: length is incorrect. expected 5, was %lu\n",strlen(msg));
+				return -1;
+			}
+
+			if(msg[3] != (msg[1]^msg[2])) { //ANALYZE BCC1
+				printf("RECEIVING R: BCC1 != (A XOR C)\n");
+				return -1;
+			}
+
+			if(msg[1]=!0x03) {
+				printf("RECEIVING R: A is incorrect. Expected 0x%02X, was 0x%02X\n",0x03,msg[1]);
+				return -1;
+			}
+
+			if(msg[2]==0x01) //ANALYZE C
+				return 0;
+			else if(msg[2]==0x81)
+				return 1;
+			else if(msg[2]==0x05)
+				return 2;
+			else if(msg[2]==0x85)
+				return 3;
+			else {
+				printf("RECEIVING R: A is incorrect.\n");
+				return -1;
+			}
+
+		default:
+			printf("RECEIVING R: NO STATE FOUND\n");
+			return -3;
+		}
+	}
+}
+
 int stateMachineDISC(int fd) {
 	char msg[255];
 	state st = START;
@@ -387,11 +479,11 @@ int llopen(char* port, int flag) {
 		}
 	} else if(mode == TRANSMITTER) {
 		sendSET(fd);
-		int flags=fcntl(fd, F_GETFL, 0); //read is in nonblock so
+		flags=fcntl(fd, F_GETFL, 0); //read is in nonblock so
 		fcntl(fd, F_SETFL, flags | O_NONBLOCK); //alarm works
 		if(stateMachineUA(fd)==TRUE) {
 			printf("UA received successfully!\n");
-			fcntl(fd, F_SETFL, flags);
+			alarmFlag=0;
 			return fd;
 		} else {
 			printf("UA was not received successfully\n");
@@ -433,8 +525,26 @@ int llwrite(int fd, char* buffer, int length) {
 	package[2] = C;
 	package[3] = package[1]^package[2];
 	package[i++] = FLAG;
+	
+	int res=0;
+    while(alarmCounter < 4) {
+        if(alarmFlag) {
+            alarm(3);
+            alarmFlag=0;
+			res=sendMessage(fd, package,i+1);
+			int resMachine;
+			if((resMachine=stateMachineR(fd))>=2){
+				if((C==0x00 && resMachine==3) ||
+					(C==0x01 && resMachine==2))
+					break;
+			}				
+        }
+    }
+    alarm(0);
+	alarmFlag=1;
+	alarmCounter=0;
 
-	return sendMessage(fd, package,i+1);
+	return res;
 }
 
 /**
@@ -612,6 +722,8 @@ int llclose(int fd) {
 
 		//send UA
 		sendUA(fd);
+		
+		fcntl(fd, F_SETFL, flags);
 
 	} else { /* -------------MODE RECEIVER------------- */
 
