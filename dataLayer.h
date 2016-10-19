@@ -120,7 +120,6 @@ int stateMachineSET(int fd) {
 		char info;
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
-
 			//printf("received 0x%02X\n",info);
 		}
 
@@ -192,9 +191,6 @@ int stateMachineUA(int fd) {
 		char info;
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
-
-			if(info == '\0')
-				return FALSE;
 			//printf("received 0x%02X\n",info);
 		}
 
@@ -230,6 +226,7 @@ int stateMachineUA(int fd) {
 
 		case LAST_F:
 			//printf("LAST_F\n");
+
 			if(counter != 5) { //ANALYZE STRLEN
 				printf("RECEIVING UA: length is incorrect. expected 5, was %lu\n",strlen(msg));
 				return FALSE;
@@ -270,6 +267,7 @@ int llopen(char* port, int flag) {
 		}
 	} else if(mode == TRANSMITTER) {
 		sendSET(fd);
+		sleep(2);
 		if(stateMachineUA(fd)==TRUE) {
 			printf("UA received successfully!\n");
 			return fd;
