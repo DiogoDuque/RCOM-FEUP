@@ -1,17 +1,8 @@
 /*Non-Canonical Input Processing*/
-#include <signal.h>
 #include "utils.h"
 #include "dataLayer.h"
 
 #define MODEMDEVICE "/dev/ttyS1"
-
-int flag=1, conta=1;
-
-void atende() {
-    printf("alarme # %d\n", conta);
-    flag=1;
-    conta++;
-}
 
 int sendStart(int fd, char* fileSize, char* fileName) {
 	int size = 10 + strlen(fileName);
@@ -85,18 +76,18 @@ int main(int argc, char** argv) {
     
     (void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
 	int fd=-1;
+	alarmFlag=1;
 
-    while(conta < 4) {
-        if(flag) {
-			fd=llopen(argv[1], TRANSMITTER);
+    while(alarmCounter < 4) {
+        if(alarmFlag) {
             alarm(3);
-            flag=0;
+            alarmFlag=0;
+			fd=llopen(argv[1], TRANSMITTER);
+			if(fd!=-1) break;
         }
     }
     alarm(0);
-    printf("Count: %d", conta);
-    //sleep(3);
-
+	
 	switch(llclose(fd)){
 	case 0:
 		printf("Closed receiver successfully!\n");

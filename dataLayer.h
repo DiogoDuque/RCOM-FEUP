@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <fcntl.h>
 
 #define TRANSMITTER 0
 #define RECEIVER 1
@@ -52,12 +53,10 @@ int init(char* port) {
 
 char receiveMessage(int fd) {
 	char buf[16];
-	buf[0]='\0';
+	buf[0]=NULL;
     int res = read(fd,buf,1);
-
+	if(res<=0) return NULL;
    	//buf[res]='\0';          /* so we can printf... */
-
-	int res2=write(fd,buf,1);
 
 	return buf[0];
 }
@@ -190,7 +189,9 @@ int stateMachineUA(int fd) {
 	while(TRUE){
 		char info;
 		if(st!=LAST_F) {
-		 	info=receiveMessage(fd);
+		 	while((info=receiveMessage(fd))==NULL){
+				if(alarmFlag) return FALSE;
+			}
 			//printf("received 0x%02X\n",info);
 		}
 
@@ -237,6 +238,12 @@ int stateMachineUA(int fd) {
 				return FALSE;
 			}
 
+			if(!(msg[1]==0x03 && mode==RECEIVER) &&
+				!(msg[1])==0x01 && mode==TRANSMITTER){
+				printf("RECEIVING UA: A is incorrect\n");
+				return FALSE;
+			}
+
 			if(msg[2]==0x07) //ANALYZE C
 				return TRUE;
 			else {
@@ -267,11 +274,15 @@ int llopen(char* port, int flag) {
 		}
 	} else if(mode == TRANSMITTER) {
 		sendSET(fd);
+		int flags=fcntl(fd, F_GETFL, 0); //read is in nonblock so
+		fcntl(fd, F_SETFL, flags | O_NONBLOCK); //alarm works
 		if(stateMachineUA(fd)==TRUE) {
 			printf("UA received successfully!\n");
+			fcntl(fd, F_SETFL, flags);
 			return fd;
 		} else {
 			printf("UA was not received successfully\n");
+			fcntl(fd, F_SETFL, flags);
 			return -1;
 		}
 	} else return -2;

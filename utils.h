@@ -5,6 +5,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <signal.h>
+
+int alarmFlag=0, alarmCounter=1;
+
+void atende() {
+    printf("alarme # %d\n", alarmCounter);
+    alarmFlag=1;
+    alarmCounter++;
+}
 
 void printHex(char* hexMsg, int size) {
 	printf("HEX ARRAY:");
