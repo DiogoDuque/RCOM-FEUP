@@ -9,8 +9,13 @@ struct termios oldtio,newtio;
 
 #define BAUDRATE B38400
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
-#define FALSE 0
-#define TRUE 1
+#define FALSE   0
+#define TRUE    1
+
+#define FLAG    0x7E
+#define ESCAPE  0x7D
+#define ESC7E   0x5E
+#define ESC7D   0x5D
 
 
 int init(char* port) {
@@ -271,8 +276,76 @@ int llwrite(int fd, char* buffer, int length){
 
 }
 
-int llread (int fd, char* buffer) {
+struct Trama {
+    char address;
+    char control;
+    char bcc1;
+    char data[255];
+    char bcc2;
+};
 
+
+int readTrama(int fd, Trama * trama){
+    int nrBytes = 0;
+    int r;
+    char header[4];
+    char c;
+
+    r = read(fd, &header, 4);    //4 = header length (in bytes)
+
+    if (r < 4){
+        perror("error on read\n");
+        return -1;
+    }
+
+    //filling header
+    trama.address = c[1];
+    trama.control = c[2];
+    trama.bcc1 =    c[3];
+
+    //data field loop
+    int i = 0;
+    while (read(fd, &c, 1) < 1){
+        if (c == FLAG){
+            trama.bcc1 = trama.data[i-1];
+            trama.data[i-1] = 0;
+            return i-1;     //real trama length is i+escape_offset-1+6 = i+5
+        }
+
+        //destuffing
+        if (c == ESCAPE){
+            if (read(fd, &c, 1) < 1){
+                perror("error on read\n");
+                return 1;
+            }
+
+            if (c == ESC7E){
+                trama.data[i] = FLAG;
+            }
+            if (c == ESC7D){
+                trama.data[i] = ESCAPE;
+            }
+            i++;
+        }
+        else {
+            trama.data[i] = c;
+            i++;
+        }
+    }
+
+    perror("error on read\n");
+    return -1;
+}
+
+int llread (int fd, char* buffer) {
+    struct Trama trama;
+
+    while(readTrama(fd, &trama) >= 0) {
+        //
+    }
+
+    perror("error on readTrama\n");
+    return -1;
 }
 
 int llclose(int fd) {
@@ -283,4 +356,3 @@ int llclose(int fd) {
 		ret += 1;
 	return ret;
 }
-
