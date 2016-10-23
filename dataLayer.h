@@ -82,17 +82,21 @@ void sendSET(int fd){ //cmd
 	printHex(msg,5);
 	if(sendMessage(fd,msg,5)==TRUE)
 		printf("SET sent successfully!\n");
-	else printf("Warning: set was not sent successfully!\n");
+	else printf("Warning: SET was not sent successfully!\n");
 }
 
 void sendUA(int fd){ //ans
+	printf("SEND UA\n");
 	char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x01:0x03; //A
 	msg[2]=0x07; //C
-	msg[3]=0x00; //BCC1
+	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
-	sendMessage(fd,msg,5);
+	printHex(msg,5);
+	if(sendMessage(fd,msg,5)==TRUE)
+		printf("UA sent successfully!\n");
+	else printf("Warning: UA was not sent successfully!\n");
 }
 
 void sendDISC(int fd){ //cmd
@@ -102,7 +106,9 @@ void sendDISC(int fd){ //cmd
 	msg[2]=0x03; //C
 	msg[3]=0x04; //BCC1
 	msg[4]=FLAG; //F
-	sendMessage(fd,msg,5);
+	if(sendMessage(fd,msg,5)==TRUE)
+		printf("DISC sent successfully!\n");
+	else printf("Warning: DISC was not sent successfully!\n");
 }
 
 int stateMachineSET(int fd) {
@@ -115,22 +121,20 @@ int stateMachineSET(int fd) {
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
 
-			if(info == '\0')
-				return FALSE;
-			printf("received 0x%02X\n",info);
+			//printf("received 0x%02X\n",info);
 		}
 
 		switch(st) {
 
 		case START:
-			printf("START\n");
+			//printf("START\n");
 			if(info!=0x7E)
 				st=START;
 			else st=FIRST_F;
 			break;
 
 		case FIRST_F:
-			printf("FIRST_F\n");
+			//printf("FIRST_F\n");
 			if(info==0x7E)
 				st=FIRST_F;
 			else {
@@ -142,7 +146,7 @@ int stateMachineSET(int fd) {
 			break;
 
 		case READING:
-			printf("READING\n");
+			//printf("READING\n");
 			msg[counter]=info;
 			counter++;
 			if(info!=0x7E)
@@ -151,14 +155,14 @@ int stateMachineSET(int fd) {
 			break;
 
 		case LAST_F:
-			printf("LAST_F\n");
+			//printf("LAST_F\n");
 			if(counter != 5) { //ANALYZE STRLEN
-				printf("length is incorrect. expected 5, was %lu\n",strlen(msg));
+				printf("RECEIVING SET: length is incorrect. expected 5, was %lu\n",strlen(msg));
 				return FALSE;
 			}
 
 			if(msg[3] != (msg[1]^msg[2])) { //ANALYZE BCC1
-				printf("BCC1 != (A XOR C)\n");
+				printf("RECEIVING SET: BCC1 != (A XOR C)\n");
 				return FALSE;
 			}
 
@@ -166,12 +170,12 @@ int stateMachineSET(int fd) {
 				return TRUE;
 			}
 			else {
-				printf("C is incorrect. expected 0x03, was 0x%02X\n",msg[2]);
+				printf("RECEIVING SET: C is incorrect. expected 0x03, was 0x%02X\n",msg[2]);
 				return FALSE;
 			}
 
 		default:
-			printf("ERROR: NO STATE FOUND\n");
+			printf("RECEIVING SET: NO STATE FOUND\n");
 			return FALSE;
 		}
 
@@ -191,20 +195,20 @@ int stateMachineUA(int fd) {
 
 			if(info == '\0')
 				return FALSE;
-			printf("received 0x%02X\n",info);
+			//printf("received 0x%02X\n",info);
 		}
 
 		switch(st) {
 
 		case START:
-			printf("START\n");
+			//printf("START\n");
 			if(info!=0x7E)
 				st=START;
 			else st=FIRST_F;
 			break;
 
 		case FIRST_F:
-			printf("FIRST_F\n");
+			//printf("FIRST_F\n");
 			if(info==0x7E)
 				st=FIRST_F;
 			else {
@@ -216,7 +220,7 @@ int stateMachineUA(int fd) {
 			break;
 
 		case READING:
-			printf("READING\n");
+			//printf("READING\n");
 			msg[counter]=info;
 			counter++;
 			if(info!=0x7E)
@@ -225,26 +229,26 @@ int stateMachineUA(int fd) {
 			break;
 
 		case LAST_F:
-			printf("LAST_F\n");
+			//printf("LAST_F\n");
 			if(counter != 5) { //ANALYZE STRLEN
-				printf("length is incorrect. expected 5, was %lu\n",strlen(msg));
+				printf("RECEIVING UA: length is incorrect. expected 5, was %lu\n",strlen(msg));
 				return FALSE;
 			}
 
 			if(msg[3] != (msg[1]^msg[2])) { //ANALYZE BCC1
-				printf("BCC1 != (A XOR C)\n");
+				printf("RECEIVING UA: BCC1 != (A XOR C)\n");
 				return FALSE;
 			}
 
 			if(msg[2]==0x07) //ANALYZE C
 				return TRUE;
 			else {
-				printf("C is incorrect. expected 0x03, was 0x%02X\n",msg[2]);
+				printf("RECEIVING UA: C is incorrect. expected 0x07, was 0x%02X\n",msg[2]);
 				return FALSE;
 			}
 
 		default:
-			printf("ERROR: NO STATE FOUND\n");
+			printf("RECEIVING UA: NO STATE FOUND\n");
 			return FALSE;
 		}
 
@@ -266,7 +270,6 @@ int llopen(char* port, int flag) {
 		}
 	} else if(mode == TRANSMITTER) {
 		sendSET(fd);
-		sleep(3);
 		if(stateMachineUA(fd)==TRUE) {
 			printf("UA received successfully!\n");
 			return fd;
