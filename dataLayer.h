@@ -86,7 +86,6 @@ void sendSET(int fd){ //cmd
 }
 
 void sendUA(int fd){ //ans
-	printf("SEND UA\n");
 	char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x01:0x03; //A
@@ -178,6 +177,7 @@ int stateMachineSET(int fd) {
 			return FALSE;
 		}
 
+		printf("RECEIVING SET: ");
 		printHex(msg,counter);
 	}
 }
@@ -226,7 +226,7 @@ int stateMachineUA(int fd) {
 
 		case LAST_F:
 			//printf("LAST_F\n");
-
+			
 			if(counter != 5) { //ANALYZE STRLEN
 				printf("RECEIVING UA: length is incorrect. expected 5, was %lu\n",strlen(msg));
 				return FALSE;
@@ -248,7 +248,7 @@ int stateMachineUA(int fd) {
 			printf("RECEIVING UA: NO STATE FOUND\n");
 			return FALSE;
 		}
-
+		printf("RECEIVING UA: ");
 		printHex(msg, counter);
 	}
 }
@@ -258,8 +258,8 @@ int llopen(char* port, int flag) {
 	int fd = init(port);
 	if(mode == RECEIVER) {
 		if(stateMachineSET(fd)==TRUE) {
-			sendUA(fd);
 			printf("SET received successfully!\n");
+			sendUA(fd);
 			return fd;
 		} else {
 			printf("SET was not received successfully\n");
@@ -267,7 +267,6 @@ int llopen(char* port, int flag) {
 		}
 	} else if(mode == TRANSMITTER) {
 		sendSET(fd);
-		sleep(2);
 		if(stateMachineUA(fd)==TRUE) {
 			printf("UA received successfully!\n");
 			return fd;
@@ -281,7 +280,6 @@ int llopen(char* port, int flag) {
 int llwrite(int fd, char* buffer, int length) {
 	int size = length + 6;
 	char package [2*length + 6];
-	
 	char A = 0x03;
 	char C = 0x00;
 	char BCC2 = 0x00;
@@ -312,7 +310,7 @@ int llwrite(int fd, char* buffer, int length) {
 	package[3] = package[1]^package[2];
 	package[i++] = FLAG;
 
-	return sendMessage(fd, package);
+	return sendMessage(fd, package,i+1);
 }
 
 struct Trama {
