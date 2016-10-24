@@ -65,9 +65,8 @@ int init(char* port) {
 
 char receiveMessage(int fd) {
 	char buf[16];
-	buf[0]=NULL;
-    int res = read(fd,buf,1);
-	if(res<=0) return NULL;
+    int res;
+	while((res = read(fd,buf,1)) <= 0);
    	//buf[res]='\0';          /* so we can printf... */
 
 	return buf[0];
@@ -113,8 +112,8 @@ void sendDISC(int fd){ //cmd
 	char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
-	msg[2]=0x03; //C
-	msg[3]=0x04; //BCC1
+	msg[2]=0x0B; //C
+	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	if(sendMessage(fd,msg,5)==TRUE)
 		printf("DISC sent successfully!\n");
@@ -165,6 +164,9 @@ int stateMachineSET(int fd) {
 
 		case LAST_F:
 			//printf("LAST_F\n");
+			printf("RECEIVING SET: ");
+			printHex(msg,counter);
+
 			if(counter != 5) { //ANALYZE STRLEN
 				printf("RECEIVING SET: length is incorrect. expected 5, was %lu\n",strlen(msg));
 				return FALSE;
@@ -187,9 +189,6 @@ int stateMachineSET(int fd) {
 			printf("RECEIVING SET: NO STATE FOUND\n");
 			return FALSE;
 		}
-
-		printf("RECEIVING SET: ");
-		printHex(msg,counter);
 	}
 }
 
@@ -201,11 +200,10 @@ int stateMachineUA(int fd) {
 	while(TRUE){
 		char info;
 		if(st!=LAST_F) {
-		 	while((info=receiveMessage(fd))==NULL){
-				if(alarmFlag) return FALSE;
+		 	info=receiveMessage(fd);
+			if(alarmFlag) return FALSE;
 			}
 			//printf("received 0x%02X\n",info);
-		}
 
 		switch(st) {
 
@@ -239,6 +237,8 @@ int stateMachineUA(int fd) {
 
 		case LAST_F:
 			//printf("LAST_F\n");
+			printf("RECEIVING UA: ");
+			printHex(msg,counter);
 
 			if(counter != 5) { //ANALYZE STRLEN
 				printf("RECEIVING UA: length is incorrect. expected 5, was %lu\n",strlen(msg));
@@ -267,8 +267,6 @@ int stateMachineUA(int fd) {
 			printf("RECEIVING UA: NO STATE FOUND\n");
 			return FALSE;
 		}
-		printf("RECEIVING UA: ");
-		printHex(msg, counter);
 	}
 }
 
@@ -280,11 +278,10 @@ int stateMachineDISC(int fd) {
 	while(TRUE){
 		char info;
 		if(st!=LAST_F) {
-		 	while((info=receiveMessage(fd))==NULL){
-				if(alarmFlag) return FALSE;
+		 	info=receiveMessage(fd);
+			if(alarmFlag) return FALSE;
 			}
 			//printf("received 0x%02X\n",info);
-		}
 
 		switch(st) {
 
@@ -318,6 +315,8 @@ int stateMachineDISC(int fd) {
 
 		case LAST_F:
 			//printf("LAST_F\n");
+			printf("RECEIVING DISC: ");
+			printHex(msg,counter);
 
 			if(counter != 5) { //ANALYZE STRLEN
 				printf("RECEIVING DISC: length is incorrect. expected 5, was %lu\n",strlen(msg));
@@ -346,8 +345,6 @@ int stateMachineDISC(int fd) {
 			printf("RECEIVING DISC: NO STATE FOUND\n");
 			return FALSE;
 		}
-		printf("RECEIVING DISC: ");
-		printHex(msg, counter);
 	}
 }
 
