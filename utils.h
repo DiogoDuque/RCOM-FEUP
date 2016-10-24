@@ -15,14 +15,14 @@ void atende() {
     alarmFlag=1;
 }
 
-void printHex(char* hexMsg, int size) {
+void printHex(unsigned char* hexMsg, int size) {
 	printf("HEX ARRAY:");
 
 	int i;
 	for(i=0; i<size; i++) {
 		printf(" 0x%02X",hexMsg[i]);
 	}
-	printf("\n\n");
+	printf("\n");
 }
 
 

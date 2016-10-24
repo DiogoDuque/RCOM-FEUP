@@ -24,8 +24,8 @@ struct termios oldtio,newtio;
 #define SET     0x03
 #define DISC    0x0b
 #define UA      0x07
-#define RR0     0x05
-#define RR1     0x85
+const unsigned char RR0= 0x05;
+const unsigned char RR1= 0x85;
 #define REJ0    0x01
 #define REJ1    0x81
 
@@ -65,8 +65,8 @@ int init(char* port) {
 	return fd;
 }
 
-char receiveMessage(int fd) {
-	char buf[16];
+unsigned char receiveMessage(int fd) {
+	unsigned char buf[16];
     int res;
 	while((res = read(fd,buf,1)) <= 0)
 		if(alarmFlag)
@@ -78,7 +78,7 @@ char receiveMessage(int fd) {
 }
 
 //tries to send a message. if was properly sent, returns TRUE; otherwise returns FALSE
-int sendMessage(int fd, char* msg, int size) {
+int sendMessage(int fd, unsigned char* msg, int size) {
 
     int res = write(fd,msg,size);
     //printf("writing: «%s»; written %d of %d written\n\n\n", msg,res,size);
@@ -88,7 +88,7 @@ int sendMessage(int fd, char* msg, int size) {
 }
 
 void sendSET(int fd){ //cmd
-	char msg[5];
+	unsigned char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=0x03; //A
 	msg[2]=0x03; //C
@@ -101,7 +101,7 @@ void sendSET(int fd){ //cmd
 }
 
 void sendUA(int fd){ //ans
-	char msg[5];
+	unsigned char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x01:0x03; //A
 	msg[2]=0x07; //C
@@ -114,7 +114,7 @@ void sendUA(int fd){ //ans
 }
 
 void sendDISC(int fd){ //cmd
-	char msg[5];
+	unsigned char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
 	msg[2]=0x0B; //C
@@ -126,19 +126,21 @@ void sendDISC(int fd){ //cmd
 }
 
 void sendRR(int fd){
-    char msg[5];
+    unsigned char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
-	msg[2]=Nr==0?RR0:RR1; //C
+	msg[2]=Nr==0?0x05:0x85; //C
+	printf("0x%02X, ",msg[2]);
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	if(sendMessage(fd,msg,5)==TRUE)
 		printf("RR sent successfully!\n");
 	else printf("Warning: RR was not sent successfully!\n");
+	printHex(msg,5);
 }
 
 void sendREJ(int fd){
-    char msg[5];
+    unsigned char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
 	msg[2]=Nr==0?REJ1:REJ0; //C
@@ -150,12 +152,12 @@ void sendREJ(int fd){
 }
 
 int stateMachineSET(int fd) {
-	char msg[255];
+	unsigned char msg[255];
 	state st = START;
 	int counter=0;
 
 	while(TRUE){
-		char info;
+		unsigned char info;
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
 			//printf("received 0x%02X\n",info);
@@ -222,12 +224,12 @@ int stateMachineSET(int fd) {
 }
 
 int stateMachineUA(int fd) {
-	char msg[255];
+	unsigned char msg[255];
 	state st = START;
 	int counter=0;
 
 	while(TRUE){
-		char info;
+		unsigned char info;
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
 			if(alarmFlag) return FALSE;
@@ -308,12 +310,12 @@ int stateMachineUA(int fd) {
  *			3 -> RR R(1)
  */
 int stateMachineR(int fd) {
-	char msg[255];
+	unsigned char msg[255];
 	state st = START;
 	int counter=0;
 
 	while(TRUE){
-		char info;
+		unsigned char info;
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
 			if(alarmFlag) return -2;
@@ -371,20 +373,20 @@ int stateMachineR(int fd) {
 			}
 
 			if(msg[2]==0x01){
-				printf("Returning 0");
+				printf("RECEIVING R: received REJ(0)\n");
 				return 0;
 			} //ANALYZE C
 
 			else if(msg[2]==0x81){
-				printf("Returning 1");
+				printf("RECEIVING R: received REJ(1)\n");
 				return 1;
 			}
 			else if(msg[2]==0x05){
-				printf("Returning 2");
+				printf("RECEIVING R: received RR(0)\n");
 				return 2;
 			}
 			else if(msg[2]==0x85){
-				printf("Returning 3");
+				printf("RECEIVING R: received RR(1)\n");
 				return 3;
 			}
 			else {
@@ -400,12 +402,12 @@ int stateMachineR(int fd) {
 }
 
 int stateMachineDISC(int fd) {
-	char msg[255];
+	unsigned char msg[255];
 	state st = START;
 	int counter=0;
 
 	while(TRUE){
-		char info;
+		unsigned char info;
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
 			if(alarmFlag) return FALSE;
@@ -505,16 +507,16 @@ int llopen(char* port, int flag) {
 	} else return -2;
 }
 
-int llwrite(int fd, char* buffer, int length) {
+int llwrite(int fd, unsigned char* buffer, int length) {
 	int size = length + 5;
-	char package [2*length + 5];
-	char A = 0x03;
-	char C = 0x00;
+	unsigned char package [2*length + 5];
+	unsigned char A = 0x03;
+	unsigned char C = 0x00;
 
 	int i;
 	int offset = 4;
 	for (i = 0; i < length; i++) {
-		char byte = buffer[i];
+		unsigned char byte = buffer[i];
 
 		// Stuffing
 		if (byte == 0x7E) {
@@ -565,9 +567,9 @@ int llwrite(int fd, char* buffer, int length) {
 *   @param  bufLength   length of buf array
 *   @return bcc's expected value
 */
-char calcBCC(char * buf, int bufLength){
+unsigned char calcBCC(unsigned char * buf, int bufLength){
     int i = 0;
-    char res = 0x00;
+    unsigned char res = 0x00;
     for (i = 0; i < bufLength; i++){
         res ^= buf[i];
     }
@@ -575,12 +577,12 @@ char calcBCC(char * buf, int bufLength){
 }
 
 struct Trama {
-    char address;
-    char control;
-    char bcc1;
-    char data[255];
+    unsigned char address;
+    unsigned char control;
+    unsigned char bcc1;
+    unsigned char data[255];
     int dataLength;
-    char bcc2;
+    unsigned char bcc2;
 };
 
 /**
@@ -592,10 +594,10 @@ struct Trama {
 int readTrama(int fd, struct Trama * trama){
     int nrBytes = 0;
     int r;
-    char c, res;
+    unsigned char c, res;
     int delta = 4;
 
-    char buf[255];
+    unsigned char buf[255];
 	buf[0] = 0x7e;
 	int flag = -1;
 	int i = 1;
@@ -660,14 +662,14 @@ int readTrama(int fd, struct Trama * trama){
         }
     }
 
-    char str[18];
+    unsigned char str[18];
     sprintf(str, "error on read (i=%d)\n", i);
 
     perror(str);
     return -1;
 }
 
-int llread (int fd, char * buffer) {
+int llread (int fd, unsigned char * buffer) {
     struct Trama trama;
     int i;
 
