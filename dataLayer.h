@@ -17,6 +17,18 @@ struct termios oldtio,newtio;
 #define ESC7E   0x5E
 #define ESC7D   0x5D
 
+//various values for 'Control' field
+#define INF0    0x00
+#define INF1    0x40
+#define SET     0x03
+#define DISC    0x0b
+#define UA      0x07
+#define RR0     0x05
+#define RR1     0x85
+#define REJ0    0x01
+#define REJ1    0x81
+
+
 int mode;
 
 int init(char* port) {
@@ -283,71 +295,112 @@ struct Trama {
     char control;
     char bcc1;
     char data[255];
+    int dataLength;
     char bcc2;
 };
 
-
-int readTrama(int fd, Trama * trama){
+/**
+*   reads fd's content and loads trama's fields accordingly
+*   @param fd       file descriptor
+*   @param trama    empty Trama to fill with information from fd
+*   @return trama's size, in bytes
+*/
+int readTrama(int fd, struct Trama * trama){
     int nrBytes = 0;
     int r;
     char header[4];
     char c;
+    int i = 0;
 
     r = read(fd, &header, 4);    //4 = header length (in bytes)
 
     if (r < 4){
-        perror("error on read\n");
+        perror("error on read (filling header)\n");
         return -1;
     }
 
     //filling header
-    trama.address = c[1];
-    trama.control = c[2];
-    trama.bcc1 =    c[3];
+    trama->address = header[1];
+    trama->control = header[2];
+    trama->bcc1 =    header[3];
 
     //data field loop
-    int i = 0;
-    while (read(fd, &c, 1) < 1){
-        if (c == FLAG){
-            trama.bcc1 = trama.data[i-1];
-            trama.data[i-1] = 0;
-            return i-1;     //real trama length is i+escape_offset-1+6 = i+5
-        }
 
-        //destuffing
-        if (c == ESCAPE){
-            if (read(fd, &c, 1) < 1){
-                perror("error on read\n");
-                return 1;
+    if (trama->control == INF0 || trama->control == INF1){
+        while (read(fd, &c, 1) == 1){
+
+            if (c == FLAG){//end of trama
+            	if (i != 0){
+            		trama->bcc2 = trama->data[i-1];
+		            trama->data[i-1] = 0;
+                    trama->dataLength = i;
+		            return i+5;   //i + 4(header) + end of trama flag
+            	}
             }
 
-            if (c == ESC7E){
-                trama.data[i] = FLAG;
+            //destuffing
+            if (c == ESCAPE){
+                if (read(fd, &c, 1) < 1){
+                    perror("error while reading data\n");
+                    return 1;
+                }
+
+                if (c == ESC7E){
+                    trama->data[i] = FLAG;
+                }
+                if (c == ESC7D){
+                    trama->data[i] = ESCAPE;
+                }
             }
-            if (c == ESC7D){
-                trama.data[i] = ESCAPE;
+            else {
+                trama->data[i] = c;
             }
-            i++;
-        }
-        else {
-            trama.data[i] = c;
             i++;
         }
     }
 
-    perror("error on read\n");
+    char str[18];
+    sprintf(str, "error on read (i=%d)\n", i);
+
+    perror(str);
     return -1;
 }
 
 int llread (int fd, char* buffer) {
     struct Trama trama;
 
-    while(readTrama(fd, &trama) >= 0) {
-        //
-    }
+    while(TRUE) {
+        int tramaLength = readTrama(fd, &trama);
+        if (tramaLength < 4){
+            perror("error on readTrama\n");
+            return -1;
+        }
 
-    perror("error on readTrama\n");
-    return -1;
+        //llread does will never receive tramas of type RR or REJ
+        switch(trama.control){
+            case SET:
+                //reply with trama UA
+                break;
+            case UA:
+                //file transfer over
+                break;
+            case INF0:
+                //reply with RR1
+                break;
+            case INF1:
+                //reply with RR0
+                break;
+            case DISC:
+                //reply with disc
+                break;
+            default:
+                break;
+        }
+
+        if (/*finished*/){
+            return tramaLength;
+        }
+    }
 }
 
 int llclose(int fd) {
