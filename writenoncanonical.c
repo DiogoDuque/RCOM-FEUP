@@ -1,6 +1,6 @@
 /*Non-Canonical Input Processing*/
 #include <signal.h>
-#include "aux.h"
+#include "utils.h"
 #include "dataLayer.h"
 
 #define MODEMDEVICE "/dev/ttyS1"

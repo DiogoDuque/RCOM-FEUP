@@ -255,7 +255,7 @@ int llopen(char* port, int flag) {
 	int fd = init(port);
 	if(mode == RECEIVER) {
 		if(stateMachineSET(fd)==TRUE) {
-			sendUA(fd,mode);
+			sendUA(fd);
 			printf("SET received successfully!\n");
 			return fd;
 		} else {
@@ -287,7 +287,7 @@ struct Trama {
 };
 
 
-int readTrama(int fd, Trama * trama){
+int readTrama(int fd, struct Trama * trama){
     int nrBytes = 0;
     int r;
     char header[4];
@@ -301,16 +301,16 @@ int readTrama(int fd, Trama * trama){
     }
 
     //filling header
-    trama.address = c[1];
-    trama.control = c[2];
-    trama.bcc1 =    c[3];
+    trama->address = header[1];
+    trama->control = header[2];
+    trama->bcc1 =    header[3];
 
     //data field loop
     int i = 0;
     while (read(fd, &c, 1) < 1){
         if (c == FLAG){
-            trama.bcc1 = trama.data[i-1];
-            trama.data[i-1] = 0;
+            trama->bcc1 = trama->data[i-1];
+            trama->data[i-1] = 0;
             return i-1;     //real trama length is i+escape_offset-1+6 = i+5
         }
 
@@ -322,15 +322,15 @@ int readTrama(int fd, Trama * trama){
             }
 
             if (c == ESC7E){
-                trama.data[i] = FLAG;
+                trama->data[i] = FLAG;
             }
             if (c == ESC7D){
-                trama.data[i] = ESCAPE;
+                trama->data[i] = ESCAPE;
             }
             i++;
         }
         else {
-            trama.data[i] = c;
+            trama->data[i] = c;
             i++;
         }
     }

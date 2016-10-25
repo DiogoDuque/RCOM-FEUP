@@ -1,5 +1,5 @@
 /*Non-Canonical Input Processing*/
-#include "aux.h"
+#include "utils.h"
 #include "dataLayer.h"
 
 int main(int argc, char** argv){
