@@ -274,8 +274,41 @@ int llopen(char* port, int flag) {
 	} else return -2;
 }
 
-int llwrite(int fd, char* buffer, int length){
+int llwrite(int fd, char* buffer, int length) {
+	int size = length + 6;
+	char package [2*length + 6];
+	
+	char A = 0x03;
+	char C = 0x00;
+	char BCC2 = 0x00;
 
+	int i;
+	int offset = 4;
+	for (i = 0; i < length; i++) {
+		C = C^0x01;
+		char byte = buffer[i];
+
+		// Stuffing
+		if (byte == 0x7E) {
+			package[i + offset++] = 0x7D;
+			package[i + offset] = 0x5E;
+			size++;
+		} else if (byte == 0x7D) {
+			package[i + offset++] = 0x7D;
+			package[i + offset] = 0x5D;
+			size++;
+		} else {
+			package[i + offset] = buffer[i];
+		}
+	}
+		
+	package[0] = FLAG;
+	package[1] = A;
+	package[2] = C;
+	package[3] = package[1]^package[2];
+	package[i++] = FLAG;
+
+	return sendMessage(fd, package);
 }
 
 struct Trama {
