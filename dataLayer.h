@@ -290,6 +290,21 @@ int llwrite(int fd, char* buffer, int length){
 
 }
 
+/**
+*   calculates expected bcc value from given buffer
+*   @param  buf     buffer of bytes on which bcc will be calculated
+*   @param  bufLength   length of buf array
+*   @return bcc's expected value
+*/
+char calcBCC(char * buf, int bufLength){
+    int i = 0;
+    char res = 0x00;
+    for (i = 0; i < bufLength; i++){
+        res ^= buf[i];
+    }
+    return res;
+}
+
 struct Trama {
     char address;
     char control;
