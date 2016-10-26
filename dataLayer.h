@@ -31,6 +31,7 @@ struct termios oldtio,newtio;
 
 
 int mode;
+int Nr = 0;
 
 int init(char* port) {
 	int fd = open(port, O_RDWR | O_NOCTTY );
@@ -114,11 +115,35 @@ void sendDISC(int fd){ //cmd
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
 	msg[2]=0x03; //C
-	msg[3]=0x04; //BCC1
+	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	if(sendMessage(fd,msg,5)==TRUE)
 		printf("DISC sent successfully!\n");
 	else printf("Warning: DISC was not sent successfully!\n");
+}
+
+void sendRR(int fd){
+    char msg[5];
+	msg[0]=FLAG; //F
+	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
+	msg[2]=Nr==0?RR0:RR1; //C
+	msg[3]=msg[1]^msg[2]; //BCC1
+	msg[4]=FLAG; //F
+	if(sendMessage(fd,msg,5)==TRUE)
+		printf("RR sent successfully!\n");
+	else printf("Warning: RR was not sent successfully!\n");
+}
+
+void sendREJ(int fd){
+    char msg[5];
+	msg[0]=FLAG; //F
+	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
+	msg[2]=Nr==0?REJ1:REJ0; //C
+	msg[3]=msg[1]^msg[2]; //BCC1
+	msg[4]=FLAG; //F
+	if(sendMessage(fd,msg,5)==TRUE)
+		printf("REJ sent successfully!\n");
+	else printf("Warning: REJ was not sent successfully!\n");
 }
 
 int stateMachineSET(int fd) {
@@ -432,34 +457,66 @@ int llread (int fd, char* buffer) {
 
     while(TRUE) {
         int tramaLength = readTrama(fd, &trama);
-        if (tramaLength < 4){
+        if (tramaLength < 5){   //least amount of memory a trama will need
             perror("error on readTrama\n");
-            return -1;
+            return -1;  //Tramas I, S ou U com cabecalho errado sao ignoradas, sem qualquer accao (1)
         }
 
-        //llread does will never receive tramas of type RR or REJ
-        switch(trama.control){
-            case SET:
-                //reply with trama UA
-                break;
-            case UA:
-                //file transfer over
-                break;
-            case INF0:
-                //reply with RR1
-                break;
-            case INF1:
-                //reply with RR0
-                break;
-            case DISC:
-                //reply with disc
-                break;
-            default:
-                break;
-        }
+        if (trama.address^trama.control == trama.bcc1){    //i.e. if header is correct
+            //llread does will never receive tramas of type RR or REJ
+            switch(trama.control){
+                case SET:
+                    sendUA(fd);
+                    break;
+                case UA:
+                    //file transfer over
+                    //...
+                    break;
+                case INF0:  //Ns = 0
+                    if (Nr == 1){   //data is not duplicate
+                        if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
+                            //accept trama
+                            //...
 
-        if (/*finished*/){
+                            sendRR(fd);
+                            Nr = 0;
+                        }
+                        else {
+                            sendREJ(fd);
+                        }
+                    }
+                    else {
+                        sendRR(fd);
+                    }
+                    break;
+                case INF1:  //Ns = 1
+                    if (Nr == 0){   //data is not duplicate
+                        if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
+                            //accept trama
+
+                            sendRR(fd);
+                            Nr = 1;
+                        }
+                        else {
+                            sendREJ(fd);
+                        }
+                    }
+                    else {
+                        sendRR(fd);
+                    }
+                    break;
+                case DISC:
+                    sendDISC(fd);
+                    break;
+                default:
+                    perror("invalid CONTROL value\n");
+                    return -1;
+            }
             return tramaLength;
+        }
+        else {  //(1)
+            perror("wrong header bcc\n");
+            //return -1;
         }
     }
 }
