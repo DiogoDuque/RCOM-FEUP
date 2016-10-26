@@ -66,9 +66,8 @@ int init(char* port) {
 
 char receiveMessage(int fd) {
 	char buf[16];
-	buf[0]=NULL;
-    int res = read(fd,buf,1);
-	if(res<=0) return NULL;
+    int res;
+	while((res = read(fd,buf,1)) <= 0);
    	//buf[res]='\0';          /* so we can printf... */
 
 	return buf[0];
@@ -114,7 +113,7 @@ void sendDISC(int fd){ //cmd
 	char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
-	msg[2]=0x03; //C
+	msg[2]=0x0B; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	if(sendMessage(fd,msg,5)==TRUE)
@@ -190,6 +189,9 @@ int stateMachineSET(int fd) {
 
 		case LAST_F:
 			//printf("LAST_F\n");
+			printf("RECEIVING SET: ");
+			printHex(msg,counter);
+
 			if(counter != 5) { //ANALYZE STRLEN
 				printf("RECEIVING SET: length is incorrect. expected 5, was %lu\n",strlen(msg));
 				return FALSE;
@@ -212,9 +214,6 @@ int stateMachineSET(int fd) {
 			printf("RECEIVING SET: NO STATE FOUND\n");
 			return FALSE;
 		}
-
-		printf("RECEIVING SET: ");
-		printHex(msg,counter);
 	}
 }
 
@@ -226,11 +225,10 @@ int stateMachineUA(int fd) {
 	while(TRUE){
 		char info;
 		if(st!=LAST_F) {
-		 	while((info=receiveMessage(fd))==NULL){
-				if(alarmFlag) return FALSE;
+		 	info=receiveMessage(fd);
+			if(alarmFlag) return FALSE;
 			}
 			//printf("received 0x%02X\n",info);
-		}
 
 		switch(st) {
 
@@ -264,6 +262,8 @@ int stateMachineUA(int fd) {
 
 		case LAST_F:
 			//printf("LAST_F\n");
+			printf("RECEIVING UA: ");
+			printHex(msg,counter);
 
 			if(counter != 5) { //ANALYZE STRLEN
 				printf("RECEIVING UA: length is incorrect. expected 5, was %lu\n",strlen(msg));
@@ -292,8 +292,84 @@ int stateMachineUA(int fd) {
 			printf("RECEIVING UA: NO STATE FOUND\n");
 			return FALSE;
 		}
-		printf("RECEIVING UA: ");
-		printHex(msg, counter);
+	}
+}
+
+int stateMachineDISC(int fd) {
+	char msg[255];
+	state st = START;
+	int counter=0;
+
+	while(TRUE){
+		char info;
+		if(st!=LAST_F) {
+		 	info=receiveMessage(fd);
+			if(alarmFlag) return FALSE;
+			}
+			//printf("received 0x%02X\n",info);
+
+		switch(st) {
+
+		case START:
+			//printf("START\n");
+			if(info!=0x7E)
+				st=START;
+			else st=FIRST_F;
+			break;
+
+		case FIRST_F:
+			//printf("FIRST_F\n");
+			if(info==0x7E)
+				st=FIRST_F;
+			else {
+				st=READING;
+				msg[0]=0x7E;
+				msg[1]=info;
+				counter=2;
+			}
+			break;
+
+		case READING:
+			//printf("READING\n");
+			msg[counter]=info;
+			counter++;
+			if(info!=0x7E)
+				st=READING;
+			else st=LAST_F;
+			break;
+
+		case LAST_F:
+			//printf("LAST_F\n");
+			printf("RECEIVING DISC: ");
+			printHex(msg,counter);
+
+			if(counter != 5) { //ANALYZE STRLEN
+				printf("RECEIVING DISC: length is incorrect. expected 5, was %lu\n",strlen(msg));
+				return FALSE;
+			}
+
+			if(msg[3] != (msg[1]^msg[2])) { //ANALYZE BCC1
+				printf("RECEIVING DISC: BCC1 != (A XOR C)\n");
+				return FALSE;
+			}
+
+			if(!(msg[1]==0x03 && mode==TRANSMITTER) &&
+				!(msg[1])==0x01 && mode==RECEIVER){
+				printf("RECEIVING DISC: A is incorrect\n");
+				return FALSE;
+			}
+
+			if(msg[2]==0x0B) //ANALYZE C
+				return TRUE;
+			else {
+				printf("RECEIVING DISC: C is incorrect. expected 0x0B, was 0x%02X\n",msg[2]);
+				return FALSE;
+			}
+
+		default:
+			printf("RECEIVING DISC: NO STATE FOUND\n");
+			return FALSE;
+		}
 	}
 }
 
@@ -516,16 +592,39 @@ int llread (int fd, char* buffer) {
         }
         else {  //(1)
             perror("wrong header bcc\n");
-            //return -1;
+            return -1;
         }
     }
 }
 
 int llclose(int fd) {
-	if(mode==TRANSMITTER) {
+	printf("Starting to close...\n\n");
+
+	if(mode==TRANSMITTER) { /* ---------MODE RECEIVER--------- */
+
+		//send DISC
 		sendDISC(fd);
-		//wait for DISC
+
+		//receive DISC
+		if(stateMachineDISC(fd)==TRUE)printf("DISC received successfully!\n");
+		else {printf("DISC was not received successfully!\n"); return -2;}
+
+		//send UA
 		sendUA(fd);
+
+	} else { /* -------------MODE RECEIVER------------- */
+
+		//receive DISC
+		if(stateMachineDISC(fd)==TRUE) printf("DISC received successfully!\n");
+		else {printf("DISC was not received successfully!\n"); return -1;}
+
+		//send DISC
+		sendDISC(fd);
+
+		//send UA
+		if(stateMachineUA(fd)==TRUE) printf("UA received successfully!\n");
+		else {printf("UA was not received successfully!\n"); return -3;}
+
 	}
 
 	int ret=0;
