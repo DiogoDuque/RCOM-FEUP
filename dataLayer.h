@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <fcntl.h>
 
 #define TRANSMITTER 0
 #define RECEIVER 1
@@ -64,20 +65,17 @@ int init(char* port) {
 
 char receiveMessage(int fd) {
 	char buf[16];
-	buf[0]='\0';
+	buf[0]=NULL;
     int res = read(fd,buf,1);
-
+	if(res<=0) return NULL;
    	//buf[res]='\0';          /* so we can printf... */
-
-	int res2=write(fd,buf,1);
 
 	return buf[0];
 }
 
 //tries to send a message. if was properly sent, returns TRUE; otherwise returns FALSE
-int sendMessage(int fd, char* msg) {
+int sendMessage(int fd, char* msg, int size) {
 
-	int size = strlen(msg);
     int res = write(fd,msg,size);
     //printf("writing: «%s»; written %d of %d written\n\n\n", msg,res,size);
 
@@ -90,9 +88,12 @@ void sendSET(int fd){ //cmd
 	msg[0]=FLAG; //F
 	msg[1]=0x03; //A
 	msg[2]=0x03; //C
-	msg[3]=0x04; //BCC1
+	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
-	sendMessage(fd,msg);
+	printHex(msg,5);
+	if(sendMessage(fd,msg,5)==TRUE)
+		printf("SET sent successfully!\n");
+	else printf("Warning: SET was not sent successfully!\n");
 }
 
 void sendUA(int fd){ //ans
@@ -100,9 +101,12 @@ void sendUA(int fd){ //ans
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x01:0x03; //A
 	msg[2]=0x07; //C
-	msg[3]=0x00; //BCC1
+	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
-	sendMessage(fd,msg);
+	printHex(msg,5);
+	if(sendMessage(fd,msg,5)==TRUE)
+		printf("UA sent successfully!\n");
+	else printf("Warning: UA was not sent successfully!\n");
 }
 
 void sendDISC(int fd){ //cmd
@@ -112,7 +116,9 @@ void sendDISC(int fd){ //cmd
 	msg[2]=0x03; //C
 	msg[3]=0x04; //BCC1
 	msg[4]=FLAG; //F
-	sendMessage(fd,msg);
+	if(sendMessage(fd,msg,5)==TRUE)
+		printf("DISC sent successfully!\n");
+	else printf("Warning: DISC was not sent successfully!\n");
 }
 
 int stateMachineSET(int fd) {
@@ -124,23 +130,20 @@ int stateMachineSET(int fd) {
 		char info;
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
-
-			if(info == '\0')
-				return FALSE;
-			printf("received 0x%02X\n",info);
+			//printf("received 0x%02X\n",info);
 		}
 
 		switch(st) {
 
 		case START:
-			printf("START\n");
+			//printf("START\n");
 			if(info!=0x7E)
 				st=START;
 			else st=FIRST_F;
 			break;
 
 		case FIRST_F:
-			printf("FIRST_F\n");
+			//printf("FIRST_F\n");
 			if(info==0x7E)
 				st=FIRST_F;
 			else {
@@ -152,7 +155,7 @@ int stateMachineSET(int fd) {
 			break;
 
 		case READING:
-			printf("READING\n");
+			//printf("READING\n");
 			msg[counter]=info;
 			counter++;
 			if(info!=0x7E)
@@ -161,14 +164,14 @@ int stateMachineSET(int fd) {
 			break;
 
 		case LAST_F:
-			printf("LAST_F\n");
+			//printf("LAST_F\n");
 			if(counter != 5) { //ANALYZE STRLEN
-				printf("length is incorrect. expected 5, was %lu\n",strlen(msg));
+				printf("RECEIVING SET: length is incorrect. expected 5, was %lu\n",strlen(msg));
 				return FALSE;
 			}
 
 			if(msg[3] != (msg[1]^msg[2])) { //ANALYZE BCC1
-				printf("BCC1 != (A XOR C)\n");
+				printf("RECEIVING SET: BCC1 != (A XOR C)\n");
 				return FALSE;
 			}
 
@@ -176,16 +179,17 @@ int stateMachineSET(int fd) {
 				return TRUE;
 			}
 			else {
-				printf("C is incorrect. expected 0x03, was 0x%02X\n",msg[2]);
+				printf("RECEIVING SET: C is incorrect. expected 0x03, was 0x%02X\n",msg[2]);
 				return FALSE;
 			}
 
 		default:
-			printf("ERROR: NO STATE FOUND\n");
+			printf("RECEIVING SET: NO STATE FOUND\n");
 			return FALSE;
 		}
 
-		printHex(msg);
+		printf("RECEIVING SET: ");
+		printHex(msg,counter);
 	}
 }
 
@@ -197,24 +201,23 @@ int stateMachineUA(int fd) {
 	while(TRUE){
 		char info;
 		if(st!=LAST_F) {
-		 	info=receiveMessage(fd);
-
-			if(info == '\0')
-				return FALSE;
-			printf("received 0x%02X\n",info);
+		 	while((info=receiveMessage(fd))==NULL){
+				if(alarmFlag) return FALSE;
+			}
+			//printf("received 0x%02X\n",info);
 		}
 
 		switch(st) {
 
 		case START:
-			printf("START\n");
+			//printf("START\n");
 			if(info!=0x7E)
 				st=START;
 			else st=FIRST_F;
 			break;
 
 		case FIRST_F:
-			printf("FIRST_F\n");
+			//printf("FIRST_F\n");
 			if(info==0x7E)
 				st=FIRST_F;
 			else {
@@ -226,7 +229,7 @@ int stateMachineUA(int fd) {
 			break;
 
 		case READING:
-			printf("READING\n");
+			//printf("READING\n");
 			msg[counter]=info;
 			counter++;
 			if(info!=0x7E)
@@ -235,30 +238,37 @@ int stateMachineUA(int fd) {
 			break;
 
 		case LAST_F:
-			printf("LAST_F\n");
+			//printf("LAST_F\n");
+
 			if(counter != 5) { //ANALYZE STRLEN
-				printf("length is incorrect. expected 5, was %lu\n",strlen(msg));
+				printf("RECEIVING UA: length is incorrect. expected 5, was %lu\n",strlen(msg));
 				return FALSE;
 			}
 
 			if(msg[3] != (msg[1]^msg[2])) { //ANALYZE BCC1
-				printf("BCC1 != (A XOR C)\n");
+				printf("RECEIVING UA: BCC1 != (A XOR C)\n");
+				return FALSE;
+			}
+
+			if(!(msg[1]==0x03 && mode==RECEIVER) &&
+				!(msg[1])==0x01 && mode==TRANSMITTER){
+				printf("RECEIVING UA: A is incorrect\n");
 				return FALSE;
 			}
 
 			if(msg[2]==0x07) //ANALYZE C
 				return TRUE;
 			else {
-				printf("C is incorrect. expected 0x03, was 0x%02X\n",msg[2]);
+				printf("RECEIVING UA: C is incorrect. expected 0x07, was 0x%02X\n",msg[2]);
 				return FALSE;
 			}
 
 		default:
-			printf("ERROR: NO STATE FOUND\n");
+			printf("RECEIVING UA: NO STATE FOUND\n");
 			return FALSE;
 		}
-
-		printHex(msg);
+		printf("RECEIVING UA: ");
+		printHex(msg, counter);
 	}
 }
 
@@ -267,8 +277,8 @@ int llopen(char* port, int flag) {
 	int fd = init(port);
 	if(mode == RECEIVER) {
 		if(stateMachineSET(fd)==TRUE) {
-			sendUA(fd,mode);
 			printf("SET received successfully!\n");
+			sendUA(fd);
 			return fd;
 		} else {
 			printf("SET was not received successfully\n");
@@ -276,18 +286,54 @@ int llopen(char* port, int flag) {
 		}
 	} else if(mode == TRANSMITTER) {
 		sendSET(fd);
+		int flags=fcntl(fd, F_GETFL, 0); //read is in nonblock so
+		fcntl(fd, F_SETFL, flags | O_NONBLOCK); //alarm works
 		if(stateMachineUA(fd)==TRUE) {
 			printf("UA received successfully!\n");
+			fcntl(fd, F_SETFL, flags);
 			return fd;
 		} else {
 			printf("UA was not received successfully\n");
+			fcntl(fd, F_SETFL, flags);
 			return -1;
 		}
 	} else return -2;
 }
 
-int llwrite(int fd, char* buffer, int length){
+int llwrite(int fd, char* buffer, int length) {
+	int size = length + 6;
+	char package [2*length + 6];
+	char A = 0x03;
+	char C = 0x00;
+	char BCC2 = 0x00;
 
+	int i;
+	int offset = 4;
+	for (i = 0; i < length; i++) {
+		C = C^0x01;
+		char byte = buffer[i];
+
+		// Stuffing
+		if (byte == 0x7E) {
+			package[i + offset++] = 0x7D;
+			package[i + offset] = 0x5E;
+			size++;
+		} else if (byte == 0x7D) {
+			package[i + offset++] = 0x7D;
+			package[i + offset] = 0x5D;
+			size++;
+		} else {
+			package[i + offset] = buffer[i];
+		}
+	}
+
+	package[0] = FLAG;
+	package[1] = A;
+	package[2] = C;
+	package[3] = package[1]^package[2];
+	package[i++] = FLAG;
+
+	return sendMessage(fd, package,i+1);
 }
 
 /**
@@ -330,7 +376,7 @@ int readTrama(int fd, struct Trama * trama){
     r = read(fd, &header, 4);    //4 = header length (in bytes)
 
     if (r < 4){
-        perror("error on read (filling header)\n");
+        perror("error on read (readTrama)\n");
         return -1;
     }
 
@@ -344,12 +390,12 @@ int readTrama(int fd, struct Trama * trama){
     if (trama->control == INF0 || trama->control == INF1){
         while (read(fd, &c, 1) == 1){
 
-            if (c == FLAG){//end of trama
+            if (c == FLAG){
             	if (i != 0){
             		trama->bcc2 = trama->data[i-1];
 		            trama->data[i-1] = 0;
-                    trama->dataLength = i;
-		            return i+5;   //i + 4(header) + end of trama flag
+		            printf("final i value: %d\n", i);
+		            return i-1;     //real trama length is i+escape_offset-1+6 = i+5
             	}
             }
 

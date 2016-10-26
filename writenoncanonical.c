@@ -1,16 +1,69 @@
 /*Non-Canonical Input Processing*/
-#include <signal.h>
-#include "aux.h"
+#include "utils.h"
 #include "dataLayer.h"
 
 #define MODEMDEVICE "/dev/ttyS1"
 
-int flag=1, conta=1;
+int sendStart(int fd, char* fileSize, char* fileName) {
+	int size = 10 + strlen(fileName);
+	char package[size];
 
-void atende() {
-    printf("alarme # %d\n", conta);
-    flag=1;
-    conta++;
+	char C = 0x02;
+	char T1 = 0x00;
+	char L1 = 0x04; // fileSize is an array with 4 hex values
+	char T2 = 0x01;
+	char L2 = strlen(fileName);
+	char BCC2 = 0x00;
+
+	package[0] = C;
+	package[1] = T1;
+	package[2] = L1;
+	package[3] = fileSize[0];
+	package[4] = fileSize[1];
+	package[5] = fileSize[2];
+	package[6] = fileSize[3];
+	package[7] = T2;
+	package[8] = L2;
+
+	int i;
+	for (i = 0; i < strlen(fileName); i++)
+		package[i+9] = fileName[i];
+	for (i = 0; i < size -1; i++)
+		BCC2 = BCC2^package[i];
+	package[i] = BCC2;
+
+	return llwrite(fd, package, size);
+}
+
+int sendEnd(int fd, char* fileSize, char* fileName) {
+	int size = 10 + strlen(fileName);
+	char package[size];
+
+	char C = 0x03;
+	char T1 = 0x00;
+	char L1 = 0x04; // fileSize is an array with 4 hex values
+	char T2 = 0x01;
+	char L2 = strlen(fileName);
+	char BCC2 = 0x00;
+
+	package[0] = C;
+	package[1] = T1;
+	package[2] = L1;
+	package[3] = fileSize[0];
+	package[4] = fileSize[1];
+	package[5] = fileSize[2];
+	package[6] = fileSize[3];
+	package[7] = T2;
+	package[8] = L2;
+
+	int i;
+	for (i = 0; i < strlen(fileName); i++)
+		package[i+9] = fileName[i];
+	for (i = 0; i < size -1; i++)
+		BCC2 = BCC2^package[i];
+	package[i] = BCC2;
+
+	return llwrite(fd, package, size);
 }
 
 int main(int argc, char** argv) {    
@@ -23,17 +76,17 @@ int main(int argc, char** argv) {
     
     (void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
 	int fd=-1;
+	alarmFlag=1;
 
-    while(conta < 4) {
-        if(flag) {
-			fd=llopen(argv[1], TRANSMITTER);
+    while(alarmCounter < 4) {
+        if(alarmFlag) {
             alarm(3);
-            flag=0;
+            alarmFlag=0;
+			fd=llopen(argv[1], TRANSMITTER);
+			if(fd!=-1) break;
         }
     }
     alarm(0);
-    printf("Count: %d", conta);
-    //sleep(3);
 
 	switch(llclose(fd)){
 	case 0:
