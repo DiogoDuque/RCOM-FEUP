@@ -3,8 +3,8 @@
 #include "dataLayer.h"
 
 int main(int argc, char** argv){
-    if ( (argc < 2) || 
-  	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
+    if ( (argc < 2) ||
+  	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
@@ -15,11 +15,14 @@ int main(int argc, char** argv){
 		printf("Error with llopen\n");
 	}
 
+    char * buffer = malloc(567);
+    llread(fd, buffer);
+
     switch(llclose(fd)){
 	case 0:
 		printf("Closed receiver successfully!\n");
 		return 0;
-	
+
 	case 1:
 		printf("Error closing file descriptor...\n");
 		return 1;

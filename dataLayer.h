@@ -553,6 +553,7 @@ int llread (int fd, char* buffer) {
                         if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
                             //accept trama
                             //...
+                            printHex(trama.data, trama.dataLength);
 
                             sendRR(fd);
                             Nr = 0;

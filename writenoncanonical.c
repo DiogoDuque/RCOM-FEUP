@@ -66,14 +66,14 @@ int sendEnd(int fd, char* fileSize, char* fileName) {
 	return llwrite(fd, package, size);
 }
 
-int main(int argc, char** argv) {    
-    if ( (argc < 2) || 
-  	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
+int main(int argc, char** argv) {
+    if ( (argc < 2) ||
+  	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
         printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
         exit(1);
     }
-    
+
     (void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
 	int fd=-1;
 	alarmFlag=1;
@@ -88,11 +88,26 @@ int main(int argc, char** argv) {
     }
     alarm(0);
 
+    FILE * f1 = fopen("file.txt", "r");
+    int fsize;
+    fseek(f1, 0, SEEK_END);
+    fsize = ftell(f1);
+    fseek(f1, 0, SEEK_SET);
+
+    char fileSize[4];
+    fileSize[0] = (fsize >> 24) & 0xFF;
+    fileSize[1] = (fsize >> 16) & 0xFF;
+    fileSize[2] = (fsize >> 8) & 0xFF;
+    fileSize[3] = fsize & 0xFF;
+
+
+    sendStart(fd, fileSize, "file.txt");
+
 	switch(llclose(fd)){
 	case 0:
 		printf("Closed receiver successfully!\n");
 		return 0;
-	
+
 	case 1:
 		printf("Error closing file descriptor...\n");
 		return 1;
