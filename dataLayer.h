@@ -636,45 +636,37 @@ int readControl(char * buffer, struct at_control * sf_control){
 *   @param trama    empty Trama to fill with information from fd
 *   @return trama's size, in bytes
 */
-int readTrama(int fd, struct Trama * trama){    //replace fd with pre loaded buffer
+int readTrama(char * buf, struct Trama * trama){
     int nrBytes = 0;
     int r;
-    char header[4];
     char c;
-    int i = 0;
-
-    r = read(fd, &header, 4);    //4 = header length (in bytes)
-
-    if (r < 4){
-        perror("error on read (readTrama)\n");
-        return -1;
-    }
+    int i = 4;
+    int delta = 0;
 
     //filling header
-    trama->address = header[1];
-    trama->control = header[2];
-    trama->bcc1 =    header[3];
+    trama->address = buf[1];
+    trama->control = buf[2];
+    trama->bcc1 =    buf[3];
 
     //data field loop
 
     if (trama->control == INF0 || trama->control == INF1){
-        while (read(fd, &c, 1) == 1){
+        while (TRUE){
+            c = buf[i];
 
             if (c == FLAG){
             	if (i != 0){
-            		trama->bcc2 = trama->data[i-1];
+            		trama->bcc2 = trama->data[i+delta-1];
 		            trama->data[i-1] = 0;
-		            printf("final i value: %d\n", i);
-		            return i-1;     //real trama length is i+escape_offset-1+6 = i+5
+		            printf("final i data length: %d\n", i-1);
+		            return i+delta-1;     //real trama length is i+escape_offset-1+6 = i+5
             	}
             }
 
             //destuffing
             if (c == ESCAPE){
-                if (read(fd, &c, 1) < 1){
-                    perror("error while reading data\n");
-                    return 1;
-                }
+                delta++;
+                c = buf[i+delta];
 
                 if (c == ESC7E){
                     trama->data[i] = FLAG;
@@ -700,8 +692,31 @@ int readTrama(int fd, struct Trama * trama){    //replace fd with pre loaded buf
 int llread (int fd, char* buffer) {
     struct Trama trama;
 
+    char buf[255];
+	buf[0] = 0x7e;
+	int flag = -1;
+	int i = 1;
+	while(1){
+		char res = receiveMessage(fd);
+
+		if (res == 0x7e && flag == -1){
+	 		flag = 0;
+		}
+		else if (res == 0x7e && flag == 0){
+			continue;
+		}
+		else if (res != 0x7e && flag >= 0){
+			buf[i++] = res;
+			flag = 1;
+		}
+		else if (flag == 1 && res == 0x7e){
+			buf[i] = 0x7E;
+			break;
+		}
+	}
+
     while(TRUE) {
-        int tramaLength = readTrama(fd, &trama);
+        int tramaLength = readTrama(buf, &trama);
         if (tramaLength < 5){   //least amount of memory a trama will need
             perror("Error on readTrama\n");
             return -1;  //Tramas I, S ou U com cabecalho errado sao ignoradas, sem qualquer accao (1)
