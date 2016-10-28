@@ -97,10 +97,10 @@ int main(int argc, char** argv) {
     fseek(f1, 0, SEEK_SET);
 
     char fileSize[4];
-    fileSize[0] = (fsize >> 24) & 0xFF;
-    fileSize[1] = (fsize >> 16) & 0xFF;
-    fileSize[2] = (fsize >> 8) & 0xFF;
-    fileSize[3] = fsize & 0xFF;
+    fileSize[3] = (fsize >> 24) & 0xFF;
+    fileSize[2] = (fsize >> 16) & 0xFF;
+    fileSize[1] = (fsize >> 8) & 0xFF;
+    fileSize[0] = fsize & 0xFF;
 
 
     sendStart(fd, fileSize, "file.txt");

@@ -571,13 +571,60 @@ struct Trama {
     char bcc2;
 };
 
+// will be moved to application layer ***************************************
+struct at_control {
+    char control;
+    char t1;
+    int l1;
+    int fileSize;
+    char t2;
+    int l2;
+    char fileName[255];
+};
+
+int readControl(char * buffer, struct at_control * sf_control){
+    sf_control->control = buffer[0];
+    sf_control->t1 = buffer[1];
+
+    char c[4];
+    c[0] = buffer[2];
+    c[1] = 0;
+    c[2] = 0;
+    c[3] = 0;
+    sf_control->l1 = *(int *) c;
+
+    char len[4];
+    int i;
+    for (i = 0; i < sf_control->l1; i++){
+        len[i] = buffer[3+i];
+    }
+    sf_control->fileSize = *(int *) len;    //tested: works
+
+    sf_control->t2 = buffer[3+sf_control->l1];  //7
+
+    char d[4];
+    d[0] = buffer[4 + sf_control->l1];    //8
+    d[1] = 0;
+    d[2] = 0;
+    d[3] = 0;
+    sf_control->l2 = *(int *) d;
+
+    for(i = 0; i < sf_control->l2; i++){    //i seria = 9
+        sf_control->fileName[i] = buffer[5 + sf_control->l1 + i];
+    }
+
+    printf("filename: %s\n", sf_control->fileName);
+
+    return 5 + sf_control->l1 + sf_control->l2;
+}
+
 /**
 *   reads fd's content and loads trama's fields accordingly
 *   @param fd       file descriptor
 *   @param trama    empty Trama to fill with information from fd
 *   @return trama's size, in bytes
 */
-int readTrama(int fd, struct Trama * trama){
+int readTrama(int fd, struct Trama * trama){    //replace fd with pre loaded buffer
     int nrBytes = 0;
     int r;
     char header[4];
@@ -662,6 +709,14 @@ int llread (int fd, char* buffer) {
                     if (Nr == 1){   //data is not duplicate
                         if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
                             //accept trama
+                            if (trama.data[0] == 0x02 || trama.data[0] == 0x03){
+                                struct at_control sf_control;
+                                readControl(trama.data, &sf_control);
+                            }
+                            else if (trama.data[0] == 0x01){
+                                //readData(); //aargs
+                            }
+
                             //...
                             printHex(trama.data, trama.dataLength);
 
