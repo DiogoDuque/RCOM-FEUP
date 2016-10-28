@@ -70,6 +70,7 @@ char receiveMessage(int fd) {
     int res;
 	while((res = read(fd,buf,1)) <= 0);
    	//buf[res]='\0';          /* so we can printf... */
+	printHex(buf, 1);
 
 	return buf[0];
 }
@@ -695,6 +696,8 @@ int llread (int fd, char* buffer) {
             return -1;  //Tramas I, S ou U com cabecalho errado sao ignoradas, sem qualquer accao (1)
         }
 
+		printHex(buffer, tramaLength);
+
         if (trama.address^trama.control == trama.bcc1){    //i.e. if header is correct
             //llread does will never receive tramas of type RR or REJ
             switch(trama.control){
@@ -711,6 +714,7 @@ int llread (int fd, char* buffer) {
                             //accept trama
                             if (trama.data[0] == 0x02 || trama.data[0] == 0x03){
                                 struct at_control sf_control;
+								printf("Reads data control correctly\n");
                                 readControl(trama.data, &sf_control);
                             }
                             else if (trama.data[0] == 0x01){
@@ -718,7 +722,7 @@ int llread (int fd, char* buffer) {
                             }
 
                             //...
-                            printHex(trama.data, trama.dataLength);
+                            printHex(buffer, tramaLength);
 
                             sendRR(fd);
                             Nr = 0;
@@ -731,10 +735,21 @@ int llread (int fd, char* buffer) {
                         sendRR(fd);
                     }
                     break;
-                case INF1:  //Ns = 1
+                case INF1:  //Ns = 0
                     if (Nr == 0){   //data is not duplicate
                         if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
                             //accept trama
+                            if (trama.data[0] == 0x02 || trama.data[0] == 0x03){
+                                struct at_control sf_control;
+								printf("Reads data control correctly\n");
+                                readControl(trama.data, &sf_control);
+                            }
+                            else if (trama.data[0] == 0x01){
+                                //readData(); //aargs
+                            }
+
+                            //...
+                            printHex(buffer, tramaLength);
 
                             sendRR(fd);
                             Nr = 1;
