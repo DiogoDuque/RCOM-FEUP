@@ -31,7 +31,8 @@ int sendStart(int fd, char* fileSize, char* fileName) {
 	for (i = 0; i < size -1; i++)
 		BCC2 = BCC2^package[i];
 	package[i] = BCC2;
-
+	printf("Sending Start package: ");
+	printHex(package, size);
 	return llwrite(fd, package, size);
 }
 
@@ -80,15 +81,17 @@ int main(int argc, char** argv) {
 
     while(alarmCounter < 4) {
         if(alarmFlag) {
-            alarm(3);
-            alarmFlag=0;
-			fd=llopen(argv[1], TRANSMITTER);
-			if(fd>0) break;
-        }
+        alarm(3);
+        alarmFlag=0;
+				fd=llopen(argv[1], TRANSMITTER);
+				if(fd>0) break;
+      }
     }
     alarm(0);
-	alarmCounter=0;
-	alarmFlag=1;
+		alarmCounter=0;
+		alarmFlag=1;
+		if (fd <= 0)
+			return -1;
 
     FILE * f1 = fopen("file.txt", "r");
     int fsize;
@@ -102,7 +105,7 @@ int main(int argc, char** argv) {
     fileSize[1] = (fsize >> 8) & 0xFF;
     fileSize[0] = fsize & 0xFF;
 
-
+		printf("\n\n");
     sendStart(fd, fileSize, "file.txt");
 
 	switch(llclose(fd)){

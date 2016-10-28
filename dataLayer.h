@@ -61,14 +61,16 @@ int init(char* port) {
       exit(-1);
     }
 
-    printf("New termios structure set\n\n");
+    printf("\n\nNew termios structure set\n");
 	return fd;
 }
 
 char receiveMessage(int fd) {
 	char buf[16];
     int res;
-	while((res = read(fd,buf,1)) <= 0);
+	while((res = read(fd,buf,1)) <= 0)
+		if(alarmFlag)
+			return 0x00;
    	//buf[res]='\0';          /* so we can printf... */
 
 	return buf[0];
@@ -314,8 +316,8 @@ int stateMachineR(int fd) {
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
 			if(alarmFlag) return -2;
-			}
-			//printf("received 0x%02X\n",info);
+		}
+		printf("received 0x%02X\n",info);
 
 		switch(st) {
 
@@ -367,14 +369,23 @@ int stateMachineR(int fd) {
 				return -1;
 			}
 
-			if(msg[2]==0x01) //ANALYZE C
+			if(msg[2]==0x01){
+				printf("Returning 0");
 				return 0;
-			else if(msg[2]==0x81)
+			} //ANALYZE C
+
+			else if(msg[2]==0x81){
+				printf("Returning 1");
 				return 1;
-			else if(msg[2]==0x05)
+			}
+			else if(msg[2]==0x05){
+				printf("Returning 2");
 				return 2;
-			else if(msg[2]==0x85)
+			}
+			else if(msg[2]==0x85){
+				printf("Returning 3");
 				return 3;
+			}
 			else {
 				printf("RECEIVING R: A is incorrect.\n");
 				return -1;
@@ -494,16 +505,14 @@ int llopen(char* port, int flag) {
 }
 
 int llwrite(int fd, char* buffer, int length) {
-	int size = length + 6;
-	char package [2*length + 6];
+	int size = length + 5;
+	char package [2*length + 5];
 	char A = 0x03;
 	char C = 0x00;
-	char BCC2 = 0x00;
 
 	int i;
 	int offset = 4;
 	for (i = 0; i < length; i++) {
-		C = C^0x01;
 		char byte = buffer[i];
 
 		// Stuffing
@@ -524,27 +533,29 @@ int llwrite(int fd, char* buffer, int length) {
 	package[1] = A;
 	package[2] = C;
 	package[3] = package[1]^package[2];
-	package[i++] = FLAG;
-	
+	package[size-1] = FLAG;
+
 	int res=0;
     while(alarmCounter < 4) {
         if(alarmFlag) {
             alarm(3);
             alarmFlag=0;
-			res=sendMessage(fd, package,i+1);
-			int resMachine;
-			if((resMachine=stateMachineR(fd))>=2){
-				if((C==0x00 && resMachine==3) ||
-					(C==0x01 && resMachine==2))
-					break;
-			}				
+						printf("LLWrite writing: ");
+						printHex(package, size);
+						res=sendMessage(fd, package,size);
+						int resMachine;
+						if((resMachine=stateMachineR(fd))>=2) {
+							if((C==0x01 && resMachine==3) ||
+								(C==0x00 && resMachine==2))
+								break;
+						}
         }
     }
     alarm(0);
-	alarmFlag=1;
-	alarmCounter=0;
+		alarmFlag=1;
+		alarmCounter=0;
 
-	return res;
+		return res;
 }
 
 /**
@@ -691,7 +702,7 @@ int llread (int fd, char* buffer) {
     while(TRUE) {
         int tramaLength = readTrama(fd, &trama);
         if (tramaLength < 5){   //least amount of memory a trama will need
-            perror("error on readTrama\n");
+            perror("Error on readTrama\n");
             return -1;  //Tramas I, S ou U com cabecalho errado sao ignoradas, sem qualquer accao (1)
         }
 
@@ -777,7 +788,7 @@ int llclose(int fd) {
 
 		//send UA
 		sendUA(fd);
-		
+
 		fcntl(fd, F_SETFL, flags);
 
 	} else { /* -------------MODE RECEIVER------------- */
