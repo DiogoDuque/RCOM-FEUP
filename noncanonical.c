@@ -16,7 +16,33 @@ int main(int argc, char** argv){
 	}
 
     char * buffer = malloc(567);
-    llread(fd, buffer);
+	
+	char buf[255];
+	buf[0] = 0x7e;
+	int flag = -1;
+	int i = 1;
+	while(1){
+		char res = receiveMessage(fd);
+		
+		if (res == 0x7e && flag == -1){
+	 		flag = 0;
+		}
+		else if (res == 0x7e && flag == 0){
+			continue;
+		}
+		else if (res != 0x7e && flag >= 0){
+			buf[i++] = res;
+			flag = 1;
+		}
+		else if (flag == 1 && res == 0x7e){
+			buf[i] = 0x7E;
+			break;
+		}
+	}
+
+    llread(fd, buf);
+	llread(fd, buf);
+
 
     switch(llclose(fd)){
 	case 0:
