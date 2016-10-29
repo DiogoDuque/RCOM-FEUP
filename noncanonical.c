@@ -15,10 +15,12 @@ int main(int argc, char** argv){
 		printf("Error with llopen\n");
 	}
 	
-	char buf[255];
+	char buffer[255];
 
-    llread(fd, buf);
-	//llread(fd, buf);
+    llread(fd, buffer);
+	//llread(fd, buffer);
+
+    printf("AFTER LLREAD: %s\n", buffer);
 
 
     switch(llclose(fd)){

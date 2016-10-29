@@ -31,7 +31,7 @@ struct termios oldtio,newtio;
 
 
 int mode;
-int Nr = 0;
+int Nr = 1;
 int flags; //for nonblock write
 
 int init(char* port) {
@@ -72,7 +72,7 @@ char receiveMessage(int fd) {
 		if(alarmFlag)
 			return 0x00;
    	//buf[res]='\0';          /* so we can printf... */
-	printHex(buf, 1);
+	//printHex(buf, 1);
 
 	return buf[0];
 }
@@ -625,8 +625,6 @@ int readControl(char * buffer, struct at_control * sf_control){
         sf_control->fileName[i] = buffer[5 + sf_control->l1 + i];
     }
 
-    printf("filename: %s\n", sf_control->fileName);
-
     return 5 + sf_control->l1 + sf_control->l2;
 }
 
@@ -640,8 +638,8 @@ int readTrama(char * buf, struct Trama * trama){
     int nrBytes = 0;
     int r;
     char c;
-    int i = 4;
-    int delta = 0;
+    int i = 0;
+    int delta = 4;
 
     //filling header
     trama->address = buf[1];
@@ -652,19 +650,20 @@ int readTrama(char * buf, struct Trama * trama){
 
     if (trama->control == INF0 || trama->control == INF1){
         while (TRUE){
-            c = buf[i];
+            c = buf[i+delta];
 
             if (c == FLAG){
             	if (i != 0){
-            		trama->bcc2 = trama->data[i+delta-1];
+            		trama->bcc2 = trama->data[i-1];
 		            trama->data[i-1] = 0;
-		            printf("final i data length: %d\n", i-1);
-		            return i+delta-1;     //real trama length is i+escape_offset-1+6 = i+5
+                    trama->dataLength = i-1;
+
+		            return trama->dataLength + delta + 1; //real trama length is i+escape_offset-1+6 = i+5
             	}
             }
 
             //destuffing
-            if (c == ESCAPE){
+            else if (c == ESCAPE){
                 delta++;
                 c = buf[i+delta];
 
@@ -689,7 +688,7 @@ int readTrama(char * buf, struct Trama * trama){
     return -1;
 }
 
-int llread (int fd, char* buffer) {
+int llread (int fd, char * buffer) {
     struct Trama trama;
 
     char buf[255];
@@ -722,8 +721,6 @@ int llread (int fd, char* buffer) {
             return -1;  //Tramas I, S ou U com cabecalho errado sao ignoradas, sem qualquer accao (1)
         }
 
-		printHex(buffer, tramaLength);
-
         if (trama.address^trama.control == trama.bcc1){    //i.e. if header is correct
             //llread does will never receive tramas of type RR or REJ
             switch(trama.control){
@@ -740,15 +737,16 @@ int llread (int fd, char* buffer) {
                             //accept trama
                             if (trama.data[0] == 0x02 || trama.data[0] == 0x03){
                                 struct at_control sf_control;
-								printf("Reads data control correctly\n");
                                 readControl(trama.data, &sf_control);
+
+                                for (i = 0; i < sf_control.l2; i++){
+                                    buffer[i] = sf_control.fileName[i];
+                                }
+                                buffer[sf_control.l2] = 0;  //c strings are 0 terminated
                             }
                             else if (trama.data[0] == 0x01){
                                 //readData(); //aargs
                             }
-
-                            //...
-                            printHex(buffer, tramaLength);
 
                             sendRR(fd);
                             Nr = 0;
@@ -767,8 +765,11 @@ int llread (int fd, char* buffer) {
                             //accept trama
                             if (trama.data[0] == 0x02 || trama.data[0] == 0x03){
                                 struct at_control sf_control;
-								printf("Reads data control correctly\n");
                                 readControl(trama.data, &sf_control);
+
+                                for (i = 0; i < sf_control.l2; i++){
+                                    buffer[i] = sf_control.fileName[i];
+                                }
                             }
                             else if (trama.data[0] == 0x01){
                                 //readData(); //aargs
