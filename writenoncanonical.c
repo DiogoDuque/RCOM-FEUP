@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
     fileSize[1] = (fsize >> 8) & 0xFF;
     fileSize[0] = fsize & 0xFF;
 
-		printf("\n\n");
+    printf("\n\n");
     sendStart(fd, fileSize, "file.txt");
 
 	switch(llclose(fd)){
