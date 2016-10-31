@@ -128,6 +128,7 @@ int sendFile(int fd, char* fileName) {
 		}
 	}
 	if (!send(fd, package, size)) return -3;
+	fclose(f1);
 
 	if (!sendEnd(fd, fileSize, fileName)) return -4;
 }
@@ -148,8 +149,8 @@ int main(int argc, char** argv) {
         if(alarmFlag) {
         alarm(3);
         alarmFlag=0;
-				fd=llopen(argv[1], TRANSMITTER);
-				if(fd>0) break;
+		fd=llopen(argv[1], TRANSMITTER);
+		if(fd>0) break;
       }
     }
     alarm(0);
