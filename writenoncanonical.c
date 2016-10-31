@@ -25,10 +25,6 @@ int send(int fd, char* buffer, int size) {
 		BCC2 = BCC2^package[i];
 	package[i] = BCC2;
 
-	printf("Sending package #%d\n", N);
-	printHex(buffer, size);
-	//printHex(package, size + 5);
-
 	N++;
 	return llwrite(fd, package, size + 5);
 }
@@ -61,14 +57,10 @@ int sendStart(int fd, char* fileSize, char* fileName) {
 		BCC2 = BCC2^package[i];
 	package[i] = BCC2;
 
-	printf("Sending START package: ");
-	printHex(package, size);
 	return llwrite(fd, package, size);
 }
 
 int sendEnd(int fd, char* fileSize, char* fileName) {
-	printf("\n\n\n\n\n\n\n\n\n\n");
-	sleep(5);
 	int size = 10 + strlen(fileName);
 	char package[size];
 
@@ -96,12 +88,14 @@ int sendEnd(int fd, char* fileSize, char* fileName) {
 		BCC2 = BCC2^package[i];
 	package[i] = BCC2;
 
-	printf("Sending END package: ");
-	printHex(package, size);
 	return llwrite(fd, package, size);
 }
 
 int sendFile(int fd, char* fileName) {
+	printf("\n\n-----> SENDING FILE ");
+	printf(fileName);
+	printf(" <-----\n");
+
 	FILE * f1 = fopen(fileName, "r");
     if (!f1) return -1;
 
@@ -116,27 +110,32 @@ int sendFile(int fd, char* fileName) {
     fileSize[1] = (fsize >> 8) & 0xFF;
     fileSize[0] = fsize & 0xFF;
 
-	printf("\n\n");
+	printf("\n\n-----> SENDING START PACKAGE <-----\n");
     if (!sendStart(fd, fileSize, fileName)) { fclose(f1); return -2; }
 	
 	int maxPackageSize = 512;
 	int c;
 	int size = 0;
+	int counter = 0;
 	char package[maxPackageSize];
 	
 	while((c = getc(f1)) != EOF) {
 		package[size++] = c;
 
 		if (size == maxPackageSize) {
+			printf("\n\n-----> SENDING FILE PACKAGE #%d - %d Bytes <-----\n", counter++, size);
 			if (!send(fd, package, size)) { fclose(f1); return -3; }
 			size = 0;
 		}
 	}
 	fclose(f1);
+	printf("\n\n-----> SENDING FILE PACKAGE #%d - %d Bytes <-----\n", counter++, size);
 	if (!send(fd, package, size)) return -3;
 
+	printf("\n\n-----> SENDING END PACKAGE <-----\n");
 	if (!sendEnd(fd, fileSize, fileName)) return -4;
 }
+
 
 int main(int argc, char** argv) {
 	char * fileName = "pinguim.gif";

@@ -95,9 +95,9 @@ void sendSET(int fd){ //cmd
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	printHex(msg,5);
-	if(sendMessage(fd,msg,5)==TRUE)
+	if(!sendMessage(fd,msg,5)==TRUE)
 		printf("SET sent successfully!\n");
-	else printf("Warning: SET was not sent successfully!\n");
+	printf("Warning: SET was not sent successfully!\n");
 }
 
 void sendUA(int fd){ //ans
@@ -129,7 +129,7 @@ void sendRR(int fd){
     unsigned char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
-	msg[2]=Nr==0?0x85:0x05; //C
+	msg[2]=Nr==0?0x05:0x85; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	if(sendMessage(fd,msg,5)==TRUE)
@@ -316,7 +316,7 @@ int stateMachineR(int fd) {
 		unsigned char info;
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
-			 printf("received 0x%02X\n",info);
+			 //printf("received 0x%02X\n",info);
 			if(alarmFlag) return -2;
 		}
 
@@ -543,17 +543,21 @@ int llwrite(int fd, unsigned char* buffer, int length) {
         if(alarmFlag) {
             alarm(3);
             alarmFlag=0;
-			printf("LLWrite writing...");
-			//printHex(package, size);
+			
 			res=sendMessage(fd, package,size);
 			if (!res) break;
 
 			int resMachine;
 			if((resMachine=stateMachineR(fd))>=2) {
-				if((C==0x40 && resMachine==2) || (C==0x00 && resMachine==3)) {
+				if(C==0x40 && resMachine==2) 
+					C = INF0;
+				else if (C==0x00 && resMachine==3)
+					C = INF1; 
+				else {
 					C = C^0x40;
-					break;
+					continue;
 				}
+				break;
 			}
 			res=FALSE;
         }
@@ -727,7 +731,7 @@ int llread (int fd, unsigned char * buffer) {
                         return 0;
                     }
                     break;
-                case INF1:  //Ns = 0
+                case INF1:  //Ns = 1
                     if (Nr == 0){   //data is not duplicate
                         if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
                             //accept trama
@@ -772,7 +776,7 @@ int llread (int fd, unsigned char * buffer) {
 int llclose(int fd) {
 	printf("Starting to close...\n\n");
 
-	if(mode==TRANSMITTER) { /* ---------MODE RECEIVER--------- */
+	if(mode==TRANSMITTER) { /* ---------MODE TRANSMITTER--------- */
 
 
 		//send & receive DISC
