@@ -99,6 +99,8 @@ int main(int argc, char** argv){
       exit(1);
     }
 
+	(void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
+
 	int fd=llopen(argv[1], RECEIVER);
 	if(fd < 0) {
 		printf("Error with llopen\n");
@@ -107,10 +109,23 @@ int main(int argc, char** argv){
 	
     int n = 0, fileSize = 0, res;
     FILE * f1;
-    char buffer[1024];
+    
 
     while (1){
-        res = llread(fd, buffer);
+		char buffer[1024];
+		alarmCounter=0;
+		alarmFlag=1;
+		while(alarmCounter < MAX_RETRANSMISSIONS) {
+        	if(alarmFlag) {
+        		alarm(3);
+    	    	alarmFlag=0;
+				res = llread(fd, buffer);
+				if(res>-1) break;
+      		}
+    	}
+    	alarm(0);
+		alarmFlag=0;
+
         if (res > 0){
             
             if (buffer[0] == 0x02 || buffer[0] == 0x03){    //control data
@@ -120,9 +135,8 @@ int main(int argc, char** argv){
                 if (sf_control.control == 0x02){
                     //create file with name: sf_control.filename
                     printf("---->%s\n", sf_control.fileName);
-                    //f1 = fopen(sf_control.fileName, "a+");   //might change to open(3)
-                    f1 = fopen("pguin.gif", "w");   //might change to open(3)
-                    //f1 = fopen("test.txt", "a+");   //might change to open(3)
+                    f1 = fopen(sf_control.fileName, "a+");   //might change to open(3)
+                    //f1 = fopen("pguin.gif", "w");   //might change to open(3)
                     //fclose(f1);
                 }
                 else if (sf_control.control == 0x03){
@@ -139,10 +153,8 @@ int main(int argc, char** argv){
                         perror("File Received With Errors\n");
                     }
 
-                    char eos = '\0';
-                    //fprintf(f1, "%c", eos);
                     fclose(f1);
-                    break;
+					break;
                 }
             }
             else if (buffer[0] == 0x01){
@@ -152,7 +164,6 @@ int main(int argc, char** argv){
 
                 if (data.n == (n)){
                     printHex(data.data, data.k);
-                    //fprintf(f1, "%s", data.data);
                     fwrite(data.data, 1, data.k, f1);
                     printf("\nRead package #%d\n", n);
                     n++;
@@ -165,7 +176,16 @@ int main(int argc, char** argv){
         }
         else if (res == -1){
             printf("dados incorrectos\n");
+			if(alarmCounter >= MAX_RETRANSMISSIONS) {
+				alarm(0);
+				alarmCounter = 0;
+				break;
+			}
         }
+		else if (res==-2){
+			printf("ALARM TIMEOUT\n");
+			break;
+		}
     }
 
 

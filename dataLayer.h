@@ -545,7 +545,7 @@ int llwrite(int fd, unsigned char* buffer, int length) {
             alarmFlag=0;
 			
 			res=sendMessage(fd, package,size);
-			if (!res) break;
+			if (!res) continue;
 
 			int resMachine;
 			if((resMachine=stateMachineR(fd))>=2) {
@@ -613,6 +613,8 @@ int readTrama(int fd, struct Trama * trama){
 	while(1){
 		
 		res = receiveMessage(fd);
+		if(alarmFlag)
+			return -2;
 		
 		if (res == FLAG && flag == -1){
 	 		flag = 0;
@@ -650,7 +652,13 @@ int readTrama(int fd, struct Trama * trama){
                     trama->dataLength = i-1;
 
 		            return trama->dataLength + delta + 1; //real trama length is i+escape_offset-1+6 = i+5
-            	}
+            	} else {
+					trama->bcc2 = 0x00;
+		            trama->data[0] = 0;
+                    trama->dataLength = 0;
+
+		            return 5;
+				}
             }
 
             //destuffing
@@ -689,7 +697,8 @@ int llread (int fd, unsigned char * buffer) {
         if (tramaLength < 5){   //least amount of memory a trama will need
             perror("Error on readTrama\n");
             return -1;  //Tramas I, S ou U com cabecalho errado sao ignoradas, sem qualquer accao (1)
-        }
+        } else if (tramaLength == -1)
+			return -1;
 
         if (trama.address^trama.control == trama.bcc1){    //i.e. if header is correct
             //llread does will never receive tramas of type RR or REJ
@@ -781,6 +790,7 @@ int llclose(int fd) {
 
 		//send & receive DISC
 		int resDISC;
+		int alarmFlag=1;
 		while(alarmCounter < MAX_RETRANSMISSIONS) {
         	if(alarmFlag) {
         		alarm(3);
@@ -792,7 +802,7 @@ int llclose(int fd) {
     	}
     	alarm(0);
 		alarmCounter=0;
-		alarmFlag=1;
+		alarmFlag=0;
 		if(resDISC==TRUE)printf("DISC received successfully!\n");
 		else {printf("DISC was not received successfully!\n"); return -2;}
 
@@ -802,7 +812,21 @@ int llclose(int fd) {
 	} else { /* -------------MODE RECEIVER------------- */
 
 		//receive DISC
-		if(stateMachineDISC(fd)==TRUE)printf("DISC received successfully!\n");
+		alarmCounter=0;
+		alarmFlag=1;
+		int resDISC;
+		while(alarmCounter < MAX_RETRANSMISSIONS) {
+        	if(alarmFlag) {
+        		alarm(3);
+    	    	alarmFlag=0;
+				resDISC=stateMachineDISC(fd);
+				if(resDISC==TRUE) break;
+      		}
+    	}
+    	alarm(0);
+		alarmCounter=0;
+		alarmFlag=0;
+		if(resDISC==TRUE)printf("DISC received successfully!\n");
 		else {printf("DISC was not received successfully!\n"); return -1;}
 
 		//send DISC & receive UA
@@ -820,7 +844,7 @@ int llclose(int fd) {
     	}
     	alarm(0);
 		alarmCounter=0;
-		alarmFlag=1;
+		alarmFlag=0;
 		if(resUA==TRUE) printf("UA received successfully!\n");
 		else {printf("UA was not received successfully!\n"); return -3;}
 
