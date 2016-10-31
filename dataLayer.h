@@ -543,22 +543,25 @@ int llwrite(int fd, unsigned char* buffer, int length) {
         if(alarmFlag) {
             alarm(3);
             alarmFlag=0;
-						printf("LLWrite writing: ");
-						printHex(package, size);
-						res=sendMessage(fd, package,size);
-						int resMachine;
-						if((resMachine=stateMachineR(fd))>=2) {
-							if((C==0x01 && resMachine==3) ||
-								(C==0x00 && resMachine==2))
-								break;
-						}
+			printf("LLWrite writing: ");
+			printHex(package, size);
+			res=sendMessage(fd, package,size);
+			if (!res) break;
+
+			int resMachine;
+			if((resMachine=stateMachineR(fd))>=2) {
+				if((C==0x01 && resMachine==2) ||
+					(C==0x00 && resMachine==3)) {
+						break;
+					}
+			}
         }
     }
-    alarm(0);
-		alarmFlag=1;
-		alarmCounter=0;
 
-		return res;
+    alarm(0);
+	alarmFlag=1;
+	alarmCounter=0;
+	return res;
 }
 
 /**
