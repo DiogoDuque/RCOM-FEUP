@@ -537,7 +537,7 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 	package[3] = package[1]^package[2];
 	package[size-1] = FLAG;
 
-	int res=0;
+	int res=FALSE;
     while(alarmCounter < 3) {
         if(alarmFlag) {
             alarm(3);
@@ -554,6 +554,7 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 						break;
 					}
 			}
+			res=FALSE;
         }
     }
 
