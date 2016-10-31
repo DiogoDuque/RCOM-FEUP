@@ -549,8 +549,9 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 
 			int resMachine;
 			if((resMachine=stateMachineR(fd))>=2) {
-				if((C==0x01 && resMachine==2) ||
+				if((C==0x40 && resMachine==2) ||
 					(C==0x00 && resMachine==3)) {
+						C = C^0x40;
 						break;
 					}
 			}
