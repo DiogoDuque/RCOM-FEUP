@@ -9,7 +9,7 @@ struct at_control {
     int fileSize;
     char t2;
     int l2;
-    char fileName[255];
+    char fileName[1024];
 };
 
 int readControl(char * buffer, struct at_control * sf_control){
@@ -52,7 +52,7 @@ struct at_data {
     char control;
     int n;
     int k;
-    char data[255];
+    char data[1024];
 };
 
 int readData(char * buffer, struct at_data * data){
@@ -106,10 +106,9 @@ int main(int argc, char** argv){
 	
     int n = 0, fileSize = 0, res;
     FILE * f1;
+    char buffer[1024];
 
     while (1){
-        char buffer[255];
-
         res = llread(fd, buffer);
 
         if (res > 0){
@@ -120,7 +119,8 @@ int main(int argc, char** argv){
                 if (sf_control.control == 0x02){
                     //create file with name: sf_control.filename
                     printf("---->%s\n", sf_control.fileName);
-                    f1 = fopen(sf_control.fileName, "a+");   //might change to open(3)
+                    //f1 = fopen(sf_control.fileName, "a+");   //might change to open(3)
+                    f1 = fopen("pguin.gif", "a+");   //might change to open(3)
                     //f1 = fopen("test.txt", "a+");   //might change to open(3)
                     //fclose(f1);
                 }
@@ -150,6 +150,7 @@ int main(int argc, char** argv){
                 readData(buffer, &data);
 
                 if (data.n == (n + 1)){
+                    printHex(data.data, data.k);
                     fprintf(f1, "%s", data.data);
                     n++;
                     fileSize += data.k;

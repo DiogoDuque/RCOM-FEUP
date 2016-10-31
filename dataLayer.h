@@ -584,7 +584,7 @@ struct Trama {
     unsigned char address;
     unsigned char control;
     unsigned char bcc1;
-    unsigned char data[255];
+    unsigned char data[1024];
     int dataLength;
     unsigned char bcc2;
 };
@@ -601,7 +601,7 @@ int readTrama(int fd, struct Trama * trama){
     unsigned char c, res;
     int delta = 4;
 
-    unsigned char buf[255];
+    unsigned char buf[1024];
 	buf[0] = 0x7e;
 	int flag = -1;
 	int i = 1;
