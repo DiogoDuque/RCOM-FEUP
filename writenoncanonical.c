@@ -25,7 +25,8 @@ int send(int fd, char* buffer, int size) {
 		BCC2 = BCC2^package[i];
 	package[i] = BCC2;
 
-	printf("Sending package #%d", N);
+	printf("Sending package #%d\n", N);
+	printHex(buffer, size);
 	//printHex(package, size + 5);
 
 	N++;
@@ -66,10 +67,12 @@ int sendStart(int fd, char* fileSize, char* fileName) {
 }
 
 int sendEnd(int fd, char* fileSize, char* fileName) {
+	printf("\n\n\n\n\n\n\n\n\n\n");
+	sleep(5);
 	int size = 10 + strlen(fileName);
 	char package[size];
 
-	char C = 0x02;
+	char C = 0x03;
 	char T1 = 0x00;
 	char L1 = 0x04; // fileSize is an array with 4 hex values
 	char T2 = 0x01;
@@ -115,7 +118,7 @@ int sendFile(int fd, char* fileName) {
 
 	printf("\n\n");
     if (!sendStart(fd, fileSize, fileName)) { fclose(f1); return -2; }
-
+	
 	int maxPackageSize = 512;
 	int c;
 	int size = 0;

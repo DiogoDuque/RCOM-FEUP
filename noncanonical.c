@@ -111,17 +111,17 @@ int main(int argc, char** argv){
 
     while (1){
         res = llread(fd, buffer);
-
         if (res > 0){
+            
             if (buffer[0] == 0x02 || buffer[0] == 0x03){    //control data
                 struct at_control sf_control;
                 readControl(buffer, &sf_control);
-
+                
                 if (sf_control.control == 0x02){
                     //create file with name: sf_control.filename
                     printf("---->%s\n", sf_control.fileName);
                     //f1 = fopen(sf_control.fileName, "a+");   //might change to open(3)
-                    f1 = fopen("pguin.gif", "a+");   //might change to open(3)
+                    f1 = fopen("pguin.gif", "w");   //might change to open(3)
                     //f1 = fopen("test.txt", "a+");   //might change to open(3)
                     //fclose(f1);
                 }
@@ -131,7 +131,7 @@ int main(int argc, char** argv){
                     fseek(f1, 0, SEEK_END);
                     fsize = ftell(f1);
                     fseek(f1, 0, SEEK_SET);
-
+                    
                     if (fsize == fileSize){
                         printf("File Received Correctly\n");
                     }
@@ -140,7 +140,7 @@ int main(int argc, char** argv){
                     }
 
                     char eos = '\0';
-                    fprintf(f1, "%c", eos);
+                    //fprintf(f1, "%c", eos);
                     fclose(f1);
                     break;
                 }
@@ -150,9 +150,10 @@ int main(int argc, char** argv){
                 struct at_data data;
                 readData(buffer, &data);
 
-                if (data.n == (n + 1)){
+                if (data.n == (n)){
                     printHex(data.data, data.k);
-                    fprintf(f1, "%s", data.data);
+                    //fprintf(f1, "%s", data.data);
+                    fwrite(data.data, 1, data.k, f1);
                     printf("\nRead package #%d\n", n);
                     n++;
                     fileSize += data.k;

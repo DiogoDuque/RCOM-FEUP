@@ -31,7 +31,7 @@ const unsigned char RR1= 0x85;
 
 
 int mode;
-int Nr = 0;
+int Nr = 1;
 int flags; //for nonblock write
 
 int init(char* port) {
@@ -73,7 +73,7 @@ unsigned char receiveMessage(int fd) {
 			return 0x00;
    	//buf[res]='\0';          /* so we can printf... */
 	//printHex(buf, 1);
-
+	
 	return buf[0];
 }
 
@@ -316,9 +316,9 @@ int stateMachineR(int fd) {
 		unsigned char info;
 		if(st!=LAST_F) {
 		 	info=receiveMessage(fd);
+			 printf("received 0x%02X\n",info);
 			if(alarmFlag) return -2;
 		}
-		printf("received 0x%02X\n",info);
 
 		switch(st) {
 
@@ -347,7 +347,8 @@ int stateMachineR(int fd) {
 			counter++;
 			if(info!=0x7E)
 				st=READING;
-			else st=LAST_F;
+			else
+				st=LAST_F;
 			break;
 
 		case LAST_F:
@@ -606,8 +607,9 @@ int readTrama(int fd, struct Trama * trama){
 	int i = 1;
 
 	while(1){
+		
 		res = receiveMessage(fd);
-
+		
 		if (res == FLAG && flag == -1){
 	 		flag = 0;
 		}
@@ -623,12 +625,13 @@ int readTrama(int fd, struct Trama * trama){
 			break;
 		}
 	}
+	
 
     //filling header
     trama->address = buf[1];
     trama->control = buf[2];
     trama->bcc1 =    buf[3];
-
+	
     //data field loop
 
     if (trama->control == INF0 || trama->control == INF1){
@@ -678,6 +681,7 @@ int llread (int fd, unsigned char * buffer) {
 
     while(TRUE) {
         int tramaLength = readTrama(fd, &trama);
+		
         if (tramaLength < 5){   //least amount of memory a trama will need
             perror("Error on readTrama\n");
             return -1;  //Tramas I, S ou U com cabecalho errado sao ignoradas, sem qualquer accao (1)
@@ -685,6 +689,8 @@ int llread (int fd, unsigned char * buffer) {
 
         if (trama.address^trama.control == trama.bcc1){    //i.e. if header is correct
             //llread does will never receive tramas of type RR or REJ
+			printf("TRAMA CONTROL ");
+			printHex(&trama.control, 1);
             switch(trama.control){/*
                 case SET:
                     sendUA(fd);
@@ -697,7 +703,7 @@ int llread (int fd, unsigned char * buffer) {
                     if (Nr == 1){   //data is not duplicate
                         if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
                             //accept trama
-
+							printf("BCC TRUE ");
                             //struct at_control sf_control;
                             //readControl(trama.data, &sf_control);
 
@@ -710,11 +716,13 @@ int llread (int fd, unsigned char * buffer) {
                             return tramaLength;
                         }
                         else {  //bcc is incorrect
+						printf("BCC FALSE ");
                             sendREJ(fd);
                             return -1;
                         }
                     }
                     else {  //duplicate data
+						printf("REPEATED");
                         sendRR(fd);
                         return 0;
                     }
