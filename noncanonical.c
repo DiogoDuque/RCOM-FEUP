@@ -43,6 +43,7 @@ int readControl(char * buffer, struct at_control * sf_control){
     for(i = 0; i < sf_control->l2; i++){    //i seria = 9
         sf_control->fileName[i] = buffer[5 + sf_control->l1 + i];
     }
+    sf_control->fileName[sf_control->l2] = 0;
 
     return 5 + sf_control->l1 + sf_control->l2;
 }
