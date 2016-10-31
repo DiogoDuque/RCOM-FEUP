@@ -489,6 +489,7 @@ int llopen(char* port, int flag) {
 			return fd;
 		} else {
 			printf("SET was not received successfully\n");
+			close(fd);
 			return -1;
 		}
 	} else if(mode == TRANSMITTER) {
@@ -499,6 +500,7 @@ int llopen(char* port, int flag) {
 			return fd;
 		} else {
 			printf("UA was not received successfully\n");
+			close(fd);
 			return -1;
 		}
 	} else return -2;
