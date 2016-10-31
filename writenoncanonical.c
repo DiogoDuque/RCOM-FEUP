@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
 	if (fd <= 0)
 		return -1;
 
-	switch(sendFile(fd, "file.txt")) {
+	switch(sendFile(fd, "pinguim.gif")) {
 		case 0:
 			printf("File sent successfully!\n");
 			break;
