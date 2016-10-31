@@ -102,6 +102,7 @@ int main(int argc, char** argv){
 	int fd=llopen(argv[1], RECEIVER);
 	if(fd < 0) {
 		printf("Error with llopen\n");
+        return -1;
 	}
 	
     int n = 0, fileSize = 0, res;
