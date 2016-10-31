@@ -103,35 +103,56 @@ int main(int argc, char** argv){
 		printf("Error with llopen\n");
 	}
 	
-    int n = 0;
+    int n = 0, fileSize = 0, res;
     FILE * f1;
 
     while (1){
         char buffer[255];
-        llread(fd, buffer);
 
-        if (buffer[0] == 0x02 || buffer[0] == 0x03){    //control data
-            struct at_control sf_control;
-            readControl(buffer, &sf_control);
+        res = llread(fd, buffer);
 
-            if (sf_control.control == 0x02){
-                //create file with name: sf_control.filename
-                f1 = fopen(sf_control.fileName, "a+");   //might change to open(3)
+        if (res > 0){
+            if (buffer[0] == 0x02 || buffer[0] == 0x03){    //control data
+                struct at_control sf_control;
+                readControl(buffer, &sf_control);
+
+                if (sf_control.control == 0x02){
+                    //create file with name: sf_control.filename
+                    printf("---->%s\n", sf_control.fileName);
+                    f1 = fopen(sf_control.fileName, "a+");   //might change to open(3)
+                    //f1 = fopen("test.txt", "a+");   //might change to open(3)
+                    //fclose(f1);
+                }
+                else if (sf_control.control == 0x03){
+                    //close file with name sf_control.filename
+                    int fsize;
+                    fseek(f1, 0, SEEK_END);
+                    fsize = ftell(f1);
+                    fseek(f1, 0, SEEK_SET);
+
+                    if (fsize == fileSize){
+                        printf("File Received Correctly\n");
+                    }
+                    else {
+                        perror("File Received With Errors\n");
+                    }
+
+                    char eos = '\0';
+                    fprintf(f1, "%c", eos);
+                    fclose(f1);
+                    break;
+                }
             }
-            else if (sf_control.control == 0x03){
-                //close file with name sf_control.filename
-                fclose(f1);
-                break;
-            }
-        }
-        else if (buffer[0] == 0x01){
-            //data packet
-            struct at_data data;
-            readData(buffer, &data);
+            else if (buffer[0] == 0x01){
+                //data packet
+                struct at_data data;
+                readData(buffer, &data);
 
-            if (data.n == (n + 1)){
-                fprintf(f1, "%s", data.data);
-                n++;
+                if (data.n == (n + 1)){
+                    fprintf(f1, "%s", data.data);
+                    n++;
+                    fileSize += data.k;
+                }
             }
         }
     }

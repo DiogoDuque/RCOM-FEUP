@@ -682,14 +682,14 @@ int llread (int fd, unsigned char * buffer) {
 
         if (trama.address^trama.control == trama.bcc1){    //i.e. if header is correct
             //llread does will never receive tramas of type RR or REJ
-            switch(trama.control){
+            switch(trama.control){/*
                 case SET:
                     sendUA(fd);
                     break;
                 case UA:
                     //file transfer over
                     //...
-                    break;
+                    break;*/
                 case INF0:  //Ns = 0
                     if (Nr == 1){   //data is not duplicate
                         if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
@@ -704,13 +704,16 @@ int llread (int fd, unsigned char * buffer) {
 
                             sendRR(fd);
                             Nr = 0;
+                            return tramaLength;
                         }
-                        else {
+                        else {  //bcc is incorrect
                             sendREJ(fd);
+                            return -1;
                         }
                     }
-                    else {
+                    else {  //duplicate data
                         sendRR(fd);
+                        return 0;
                     }
                     break;
                 case INF1:  //Ns = 0
@@ -727,18 +730,21 @@ int llread (int fd, unsigned char * buffer) {
 
                             sendRR(fd);
                             Nr = 1;
+                            return tramaLength;
                         }
-                        else {
+                        else {  //data is incorrect
                             sendREJ(fd);
+                            return -1;
                         }
                     }
-                    else {
+                    else {  //duplicate data
                         sendRR(fd);
+                        return 0;
                     }
-                    break;
+                    break;/*
                 case DISC:
                     sendDISC(fd);
-                    break;
+                    break;*/
                 default:
                     perror("invalid CONTROL value\n");
                     return -1;
