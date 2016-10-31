@@ -157,6 +157,12 @@ int main(int argc, char** argv){
                 }
             }
         }
+        else if (res == 0){
+            printf("repetido\n");
+        }
+        else if (res == -1){
+            printf("dados incorrectos\n");
+        }
     }
 
 

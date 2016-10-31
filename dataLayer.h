@@ -31,7 +31,7 @@ const unsigned char RR1= 0x85;
 
 
 int mode;
-int Nr = 1;
+int Nr = 0;
 int flags; //for nonblock write
 
 int init(char* port) {
@@ -129,7 +129,7 @@ void sendRR(int fd){
     unsigned char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
-	msg[2]=Nr==0?0x05:0x85; //C
+	msg[2]=Nr==0?0x85:0x05; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	if(sendMessage(fd,msg,5)==TRUE)
@@ -141,7 +141,7 @@ void sendREJ(int fd){
     unsigned char msg[5];
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
-	msg[2]=Nr==0?REJ1:REJ0; //C
+	msg[2]=Nr==0?REJ0:REJ1; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	if(sendMessage(fd,msg,5)==TRUE)
