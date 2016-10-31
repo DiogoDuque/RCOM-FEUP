@@ -538,7 +538,7 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 	package[size-1] = FLAG;
 
 	int res=FALSE;
-    while(alarmCounter < 3) {
+    while(alarmCounter < MAX_RETRANSMISSIONS) {
         if(alarmFlag) {
             alarm(3);
             alarmFlag=0;
@@ -769,7 +769,7 @@ int llclose(int fd) {
 
 		//send & receive DISC
 		int resDISC;
-		while(alarmCounter < 3) {
+		while(alarmCounter < MAX_RETRANSMISSIONS) {
         	if(alarmFlag) {
         		alarm(3);
     	    	alarmFlag=0;
@@ -797,7 +797,7 @@ int llclose(int fd) {
 		alarmCounter=0;
 		alarmFlag=1;
 		int resUA;
-		while(alarmCounter < 3) {
+		while(alarmCounter < MAX_RETRANSMISSIONS) {
         	if(alarmFlag) {
         		alarm(3);
     	    	alarmFlag=0;
