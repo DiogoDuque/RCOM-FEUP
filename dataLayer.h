@@ -482,6 +482,8 @@ int stateMachineDISC(int fd) {
 int llopen(char* port, int flag) {
 	mode = flag;
 	int fd = init(port);
+	flags=fcntl(fd, F_GETFL, 0); //read is in nonblock so
+	fcntl(fd, F_SETFL, flags | O_NONBLOCK); //alarm works
 	if(mode == RECEIVER) {
 		if(stateMachineSET(fd)==TRUE) {
 			printf("SET received successfully!\n");
@@ -493,15 +495,12 @@ int llopen(char* port, int flag) {
 		}
 	} else if(mode == TRANSMITTER) {
 		sendSET(fd);
-		flags=fcntl(fd, F_GETFL, 0); //read is in nonblock so
-		fcntl(fd, F_SETFL, flags | O_NONBLOCK); //alarm works
 		if(stateMachineUA(fd)==TRUE) {
 			printf("UA received successfully!\n");
 			alarmFlag=0;
 			return fd;
 		} else {
 			printf("UA was not received successfully\n");
-			fcntl(fd, F_SETFL, flags);
 			return -1;
 		}
 	} else return -2;
@@ -539,7 +538,7 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 	package[size-1] = FLAG;
 
 	int res=0;
-    while(alarmCounter < 4) {
+    while(alarmCounter < 3) {
         if(alarmFlag) {
             alarm(3);
             alarmFlag=0;
@@ -770,28 +769,64 @@ int llclose(int fd) {
 		sendDISC(fd);
 
 		//receive DISC
-		if(stateMachineDISC(fd)==TRUE)printf("DISC received successfully!\n");
+		int resDISC;
+		while(alarmCounter < 3) {
+        	if(alarmFlag) {
+        		alarm(3);
+    	    	alarmFlag=0;
+				resDISC=stateMachineDISC(fd);
+				if(resDISC==TRUE) break;
+      		}
+    	}
+    	alarm(0);
+		alarmCounter=0;
+		alarmFlag=1;
+		if(resDISC==TRUE)printf("DISC received successfully!\n");
 		else {printf("DISC was not received successfully!\n"); return -2;}
 
 		//send UA
 		sendUA(fd);
 
-		fcntl(fd, F_SETFL, flags);
-
 	} else { /* -------------MODE RECEIVER------------- */
 
 		//receive DISC
-		if(stateMachineDISC(fd)==TRUE) printf("DISC received successfully!\n");
+		int resDISC;
+		while(alarmCounter < 3) {
+        	if(alarmFlag) {
+        		alarm(3);
+    	    	alarmFlag=0;
+				resDISC=stateMachineDISC(fd);
+				if(resDISC==TRUE) break;
+      		}
+    	}
+    	alarm(0);
+		alarmCounter=0;
+		alarmFlag=1;
+		if(resDISC==TRUE)printf("DISC received successfully!\n");
 		else {printf("DISC was not received successfully!\n"); return -1;}
-
+		
 		//send DISC
 		sendDISC(fd);
 
-		//send UA
-		if(stateMachineUA(fd)==TRUE) printf("UA received successfully!\n");
+		//receive UA
+		int resUA;
+		while(alarmCounter < 3) {
+        	if(alarmFlag) {
+        		alarm(3);
+    	    	alarmFlag=0;
+				resUA=stateMachineUA(fd);
+				if(resUA==TRUE) break;
+      		}
+    	}
+    	alarm(0);
+		alarmCounter=0;
+		alarmFlag=1;
+		if(resUA==TRUE) printf("UA received successfully!\n");
 		else {printf("UA was not received successfully!\n"); return -3;}
 
 	}
+
+	fcntl(fd, F_SETFL, flags);
 
 	int ret=0;
 	if(tcsetattr(fd,TCSANOW,&oldtio) != 0)

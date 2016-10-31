@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
 	int fd=-1;
 	alarmFlag=1;
 
-    while(alarmCounter < 4) {
+    while(alarmCounter < 3) {
         if(alarmFlag) {
         alarm(3);
         alarmFlag=0;
