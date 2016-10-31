@@ -197,7 +197,7 @@ int stateMachineSET(int fd) {
 			printHex(msg,counter);
 
 			if(counter != 5) { //ANALYZE STRLEN
-				printf("RECEIVING SET: length is incorrect. expected 5, was %lu\n",counter);
+				printf("RECEIVING SET: length is incorrect. expected 5, was %d\n",counter);
 				return FALSE;
 			}
 
@@ -270,7 +270,7 @@ int stateMachineUA(int fd) {
 			printHex(msg,counter);
 
 			if(counter != 5) { //ANALYZE STRLEN
-				printf("RECEIVING UA: length is incorrect. expected 5, was %lu\n",counter);
+				printf("RECEIVING UA: length is incorrect. expected 5, was %d\n",counter);
 				return FALSE;
 			}
 
@@ -357,7 +357,7 @@ int stateMachineR(int fd) {
 			printHex(msg,counter);
 
 			if(counter != 5) { //ANALYZE STRLEN
-				printf("RECEIVING R: length is incorrect. expected 5, was %lu\n",counter);
+				printf("RECEIVING R: length is incorrect. expected 5, was %d\n",counter);
 				return -1;
 			}
 
@@ -449,7 +449,7 @@ int stateMachineDISC(int fd) {
 			printHex(msg,counter);
 
 			if(counter != 5) { //ANALYZE STRLEN
-				printf("RECEIVING DISC: length is incorrect. expected 5, was %lu\n",counter);
+				printf("RECEIVING DISC: length is incorrect. expected 5, was %d\n",counter);
 				return FALSE;
 			}
 
@@ -790,7 +790,7 @@ int llclose(int fd) {
 
 		//send & receive DISC
 		int resDISC;
-		int alarmFlag=1;
+		alarmFlag=1;
 		while(alarmCounter < MAX_RETRANSMISSIONS) {
         	if(alarmFlag) {
         		alarm(3);
