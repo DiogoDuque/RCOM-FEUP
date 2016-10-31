@@ -153,6 +153,7 @@ int main(int argc, char** argv){
                 if (data.n == (n + 1)){
                     printHex(data.data, data.k);
                     fprintf(f1, "%s", data.data);
+                    printf("\nRead package #%d\n", n);
                     n++;
                     fileSize += data.k;
                 }

@@ -542,8 +542,8 @@ int llwrite(int fd, unsigned char* buffer, int length) {
         if(alarmFlag) {
             alarm(3);
             alarmFlag=0;
-			printf("LLWrite writing: ");
-			printHex(package, size);
+			printf("LLWrite writing...");
+			//printHex(package, size);
 			res=sendMessage(fd, package,size);
 			if (!res) break;
 

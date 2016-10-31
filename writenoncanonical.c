@@ -25,8 +25,8 @@ int send(int fd, char* buffer, int size) {
 		BCC2 = BCC2^package[i];
 	package[i] = BCC2;
 
-	printf("Sending package: ");
-	printHex(package, size + 5);
+	printf("Sending package #%d", N);
+	//printHex(package, size + 5);
 
 	N++;
 	return llwrite(fd, package, size + 5);
@@ -60,7 +60,7 @@ int sendStart(int fd, char* fileSize, char* fileName) {
 		BCC2 = BCC2^package[i];
 	package[i] = BCC2;
 
-	printf("Sending Start package: ");
+	printf("Sending START package: ");
 	printHex(package, size);
 	return llwrite(fd, package, size);
 }
@@ -69,7 +69,7 @@ int sendEnd(int fd, char* fileSize, char* fileName) {
 	int size = 10 + strlen(fileName);
 	char package[size];
 
-	char C = 0x03;
+	char C = 0x02;
 	char T1 = 0x00;
 	char L1 = 0x04; // fileSize is an array with 4 hex values
 	char T2 = 0x01;
@@ -93,6 +93,8 @@ int sendEnd(int fd, char* fileSize, char* fileName) {
 		BCC2 = BCC2^package[i];
 	package[i] = BCC2;
 
+	printf("Sending END package: ");
+	printHex(package, size);
 	return llwrite(fd, package, size);
 }
 
@@ -112,7 +114,7 @@ int sendFile(int fd, char* fileName) {
     fileSize[0] = fsize & 0xFF;
 
 	printf("\n\n");
-    if (!sendStart(fd, fileSize, fileName)) return -2;
+    if (!sendStart(fd, fileSize, fileName)) { fclose(f1); return -2; }
 
 	int maxPackageSize = 512;
 	int c;
@@ -123,12 +125,12 @@ int sendFile(int fd, char* fileName) {
 		package[size++] = c;
 
 		if (size == maxPackageSize) {
-			if (!send(fd, package, size)) return -3;
+			if (!send(fd, package, size)) { fclose(f1); return -3; }
 			size = 0;
 		}
 	}
-	if (!send(fd, package, size)) return -3;
 	fclose(f1);
+	if (!send(fd, package, size)) return -3;
 
 	if (!sendEnd(fd, fileSize, fileName)) return -4;
 }
@@ -201,4 +203,6 @@ int main(int argc, char** argv) {
 	default:
 		return -1;
 	}
+
+	return -1;
 }
