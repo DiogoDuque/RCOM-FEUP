@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
 	int fd=-1;
 	alarmFlag=1;
 
-    while(alarmCounter < 3) {
+    while(alarmCounter < MAX_RETRANSMISSIONS) {
         if(alarmFlag) {
         alarm(3);
         alarmFlag=0;

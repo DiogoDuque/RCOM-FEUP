@@ -8,6 +8,7 @@
 #include <signal.h>
 
 int alarmFlag=0, alarmCounter=0;
+#define MAX_RETRANSMISSIONS 3
 
 void atende() {
     alarmCounter++;
