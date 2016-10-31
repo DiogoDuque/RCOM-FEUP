@@ -510,7 +510,7 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 	int size = length + 5;
 	unsigned char package [2*length + 5];
 	unsigned char A = 0x03;
-	unsigned char C = 0x00;
+	static unsigned char C = 0x00;
 
 	int i;
 	int offset = 4;
@@ -549,11 +549,10 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 
 			int resMachine;
 			if((resMachine=stateMachineR(fd))>=2) {
-				if((C==0x40 && resMachine==2) ||
-					(C==0x00 && resMachine==3)) {
-						C = C^0x40;
-						break;
-					}
+				if((C==0x40 && resMachine==2) || (C==0x00 && resMachine==3)) {
+					C = C^0x40;
+					break;
+				}
 			}
 			res=FALSE;
         }
