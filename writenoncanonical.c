@@ -134,12 +134,16 @@ int sendFile(int fd, char* fileName) {
 }
 
 int main(int argc, char** argv) {
+	char * fileName = "pinguim.gif";
+
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
         printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
         exit(1);
-    }
+    } else if (argc == 3) {
+		fileName = argv[2];
+	}
 
     (void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
 	int fd=-1;
