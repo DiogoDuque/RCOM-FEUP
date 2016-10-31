@@ -130,13 +130,11 @@ void sendRR(int fd){
 	msg[0]=FLAG; //F
 	msg[1]=mode==TRANSMITTER?0x03:0x01; //A
 	msg[2]=Nr==0?0x05:0x85; //C
-	printf("0x%02X, ",msg[2]);
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	if(sendMessage(fd,msg,5)==TRUE)
 		printf("RR sent successfully!\n");
 	else printf("Warning: RR was not sent successfully!\n");
-	printHex(msg,5);
 }
 
 void sendREJ(int fd){
