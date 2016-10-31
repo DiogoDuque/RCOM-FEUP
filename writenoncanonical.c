@@ -4,6 +4,34 @@
 
 #define MODEMDEVICE "/dev/ttyS1"
 
+int send(int fd, char* buffer, int size) {
+	char package [size + 5];
+
+	char C = 0x01;
+	static char N = 0x00;
+	char L2 = size/256;
+	char L1 = size%256;
+	char BCC2 = 0x00;
+
+	package[0] = C;
+	package[1] = N;
+	package[2] = L2;
+	package[3] = L1;
+
+	int i;
+	for (i = 0; i < size; i++) 
+		package[i + 4] = buffer[i];
+	for (i = 0; i < size + 4; i++)
+		BCC2 = BCC2^package[i];
+	package[i] = BCC2;
+
+	printf("Sending package: ");
+	printHex(package, size + 5);
+
+	N++;
+	return llwrite(fd, package, size + 5);
+}
+
 int sendStart(int fd, char* fileSize, char* fileName) {
 	int size = 10 + strlen(fileName);
 	char package[size];
@@ -31,6 +59,7 @@ int sendStart(int fd, char* fileSize, char* fileName) {
 	for (i = 0; i < size -1; i++)
 		BCC2 = BCC2^package[i];
 	package[i] = BCC2;
+
 	printf("Sending Start package: ");
 	printHex(package, size);
 	return llwrite(fd, package, size);
@@ -67,6 +96,42 @@ int sendEnd(int fd, char* fileSize, char* fileName) {
 	return llwrite(fd, package, size);
 }
 
+int sendFile(int fd, char* fileName) {
+	FILE * f1 = fopen(fileName, "r");
+    if (!f1) return -1;
+
+	int fsize;
+    fseek(f1, 0, SEEK_END);
+    fsize = ftell(f1);
+    fseek(f1, 0, SEEK_SET);
+
+    char fileSize[4];
+    fileSize[3] = (fsize >> 24) & 0xFF;
+    fileSize[2] = (fsize >> 16) & 0xFF;
+    fileSize[1] = (fsize >> 8) & 0xFF;
+    fileSize[0] = fsize & 0xFF;
+
+	printf("\n\n");
+    if (!sendStart(fd, fileSize, fileName)) return -2;
+
+	int maxPackageSize = 512;
+	int c;
+	int size = 0;
+	char package[maxPackageSize];
+	
+	while((c = getc(f1)) != EOF) {
+		package[size++] = c;
+
+		if (size == maxPackageSize) {
+			if (!send(fd, package, size)) return -3;
+			size = 0;
+		}
+	}
+	if (!send(fd, package, size)) return -3;
+
+	if (!sendEnd(fd, fileSize, fileName)) return -4;
+}
+
 int main(int argc, char** argv) {
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
@@ -88,25 +153,28 @@ int main(int argc, char** argv) {
       }
     }
     alarm(0);
-		alarmCounter=0;
-		alarmFlag=1;
-		if (fd <= 0)
-			return -1;
+	alarmCounter=0;
+	alarmFlag=1;
+	if (fd <= 0)
+		return -1;
 
-    FILE * f1 = fopen("file.txt", "r");
-    int fsize;
-    fseek(f1, 0, SEEK_END);
-    fsize = ftell(f1);
-    fseek(f1, 0, SEEK_SET);
-
-    char fileSize[4];
-    fileSize[3] = (fsize >> 24) & 0xFF;
-    fileSize[2] = (fsize >> 16) & 0xFF;
-    fileSize[1] = (fsize >> 8) & 0xFF;
-    fileSize[0] = fsize & 0xFF;
-
-    printf("\n\n");
-    sendStart(fd, fileSize, "file.txt");
+	switch(sendFile(fd, "file.txt")) {
+		case 0:
+			printf("File sent successfully!\n");
+			break;
+		case -1:
+			printf("Couldn't open file!\n");
+			break;
+		case -2:
+			printf("Error sending start package!\n");
+			break;
+		case -3:
+			printf("Error sending file package!\n");
+			break;
+		case -4:
+			printf("Error sending end package!\n");
+			break;
+	} 
 
 	switch(llclose(fd)){
 	case 0:
