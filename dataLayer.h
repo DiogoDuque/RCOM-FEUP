@@ -766,15 +766,14 @@ int llclose(int fd) {
 
 	if(mode==TRANSMITTER) { /* ---------MODE RECEIVER--------- */
 
-		//send DISC
-		sendDISC(fd);
 
-		//receive DISC
+		//send & receive DISC
 		int resDISC;
 		while(alarmCounter < 3) {
         	if(alarmFlag) {
         		alarm(3);
     	    	alarmFlag=0;
+    	    	sendDISC(fd);
 				resDISC=stateMachineDISC(fd);
 				if(resDISC==TRUE) break;
       		}
@@ -791,30 +790,18 @@ int llclose(int fd) {
 	} else { /* -------------MODE RECEIVER------------- */
 
 		//receive DISC
-		int resDISC;
-		while(alarmCounter < 3) {
-        	if(alarmFlag) {
-        		alarm(3);
-    	    	alarmFlag=0;
-				resDISC=stateMachineDISC(fd);
-				if(resDISC==TRUE) break;
-      		}
-    	}
-    	alarm(0);
+		if(stateMachineDISC(fd)==TRUE)printf("DISC received successfully!\n");
+		else {printf("DISC was not received successfully!\n"); return -1;}
+
+		//send DISC & receive UA
 		alarmCounter=0;
 		alarmFlag=1;
-		if(resDISC==TRUE)printf("DISC received successfully!\n");
-		else {printf("DISC was not received successfully!\n"); return -1;}
-		
-		//send DISC
-		sendDISC(fd);
-
-		//receive UA
 		int resUA;
 		while(alarmCounter < 3) {
         	if(alarmFlag) {
         		alarm(3);
     	    	alarmFlag=0;
+				sendDISC(fd);
 				resUA=stateMachineUA(fd);
 				if(resUA==TRUE) break;
       		}
