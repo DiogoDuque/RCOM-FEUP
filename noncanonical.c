@@ -1,6 +1,8 @@
 /*Non-Canonical Input Processing*/
 #include "utils.h"
 #include "dataLayer.h"
+#include <time.h>
+#include <stdlib.h>
 
 struct at_control {
     char control;
@@ -9,7 +11,7 @@ struct at_control {
     int fileSize;
     char t2;
     int l2;
-    char fileName[1024];
+    char fileName[2048];
 };
 
 int readControl(char * buffer, struct at_control * sf_control){
@@ -52,7 +54,7 @@ struct at_data {
     char control;
     int n;
     int k;
-    char data[1024];
+    char data[2048];
 };
 
 int readData(char * buffer, struct at_data * data){
@@ -91,13 +93,28 @@ int readData(char * buffer, struct at_data * data){
     return 4 + data->k;
 }
 
+void printStatus(int code) {
+	printf("\n\n-----> STATUS <-----\n");
+	printf("Packages received: %d\n", cntReceived);
+	printf("Number of time-outs: %d\n", cntTimeOuts);
+	printf("REJ sent: %d\n", cntRejSend);
+
+	exit(code);
+}
+
 int main(int argc, char** argv){
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
-      printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
-      exit(1);
-    }
+        printf("Usage:\tnserial SerialPort [MaxPackageSize (1024 MAX)] [Retries] [TimeOut]\n");
+		printf("\tex: nserial /dev/ttyS1 [512] [3] [3]\n");
+        exit(1);
+    } else if (argc == 5) {
+		maxPackageSize = (int) strtol(argv[2], NULL, 10);
+        maxPackageSize = maxPackageSize > 1024 ? 1024 : maxPackageSize;
+		retries = (int) strtol(argv[3], NULL, 10);
+		timeOut = (int) strtol(argv[4], NULL, 10);
+	} 
 
 	(void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
 
@@ -112,12 +129,12 @@ int main(int argc, char** argv){
     
 
     while (1){
-		char buffer[1024];
+		char buffer[2048];
 		alarmCounter=0;
 		alarmFlag=1;
-		while(alarmCounter < MAX_RETRANSMISSIONS) {
+		while(alarmCounter < retries) {
         	if(alarmFlag) {
-        		alarm(3);
+        		alarm(timeOut);
     	    	alarmFlag=0;
 				res = llread(fd, buffer);
 				if(res>-1) break;
@@ -176,7 +193,7 @@ int main(int argc, char** argv){
         }
         else if (res == -1){
             printf("dados incorrectos\n");
-			if(alarmCounter >= MAX_RETRANSMISSIONS) {
+			if(alarmCounter >= retries) {
 				alarm(0);
 				alarmCounter = 0;
 				break;
@@ -197,21 +214,21 @@ int main(int argc, char** argv){
     switch(llclose(fd)){
 	case 0:
 		printf("Closed receiver successfully!\n");
-		return 0;
+		printStatus(0);
 
 	case 1:
 		printf("Error closing file descriptor...\n");
-		return 1;
+		printStatus(1);
 
 	case 2:
 		printf("Error with tcsetattr()...\n");
-		return 2;
+		printStatus(2);
 
 	case 3:
 		printf("Error closing file descriptor and with tcsetattr()...\n");
-		return 3;
+		printStatus(3);
 
 	default:
-		return -1;
+		printStatus(-1);
 	}
 }

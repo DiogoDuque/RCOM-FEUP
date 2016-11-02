@@ -79,10 +79,15 @@ unsigned char receiveMessage(int fd) {
 
 //tries to send a message. if was properly sent, returns TRUE; otherwise returns FALSE
 int sendMessage(int fd, unsigned char* msg, int size) {
-
+	char tmp = msg[size/2];
+	if(generateError != 0) {
+		printf("Sending message with errors!\n");
+		generateError = 0;
+		msg[size/2] = 0x00;
+	}
     int res = write(fd,msg,size);
     //printf("writing: «%s»; written %d of %d written\n\n\n", msg,res,size);
-
+	msg[size/2] = tmp;
 	if(res==size) return TRUE;
 	else return FALSE;
 }
@@ -144,8 +149,10 @@ void sendREJ(int fd){
 	msg[2]=Nr==0?REJ0:REJ1; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
-	if(sendMessage(fd,msg,5)==TRUE)
+	if(sendMessage(fd,msg,5)==TRUE) {
 		printf("REJ sent successfully!\n");
+		cntRejSend++;
+	}
 	else printf("Warning: REJ was not sent successfully!\n");
 }
 
@@ -373,11 +380,13 @@ int stateMachineR(int fd) {
 
 			if(msg[2]==0x01){
 				printf("RECEIVING R: received REJ(0)\n");
+				cntRejReceived++;
 				return 0;
 			} //ANALYZE C
 
 			else if(msg[2]==0x81){
 				printf("RECEIVING R: received REJ(1)\n");
+				cntRejReceived++;
 				return 1;
 			}
 			else if(msg[2]==0x05){
@@ -539,11 +548,17 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 	package[size-1] = FLAG;
 
 	int res=FALSE;
-    while(alarmCounter < MAX_RETRANSMISSIONS) {
+	if (randInterval(0, 10) < 1)
+		generateError = 1;
+	
+    while(alarmCounter < retries) {
         if(alarmFlag) {
-            alarm(3);
+            alarm(timeOut);
             alarmFlag=0;
 			
+			if (alarmCounter == 0)
+				cntTrasmit++;
+			else cntRetransmit++;
 			res=sendMessage(fd, package,size);
 			if (!res) continue;
 
@@ -588,7 +603,7 @@ struct Trama {
     unsigned char address;
     unsigned char control;
     unsigned char bcc1;
-    unsigned char data[1024];
+    unsigned char data[2048];
     int dataLength;
     unsigned char bcc2;
 };
@@ -605,7 +620,7 @@ int readTrama(int fd, struct Trama * trama){
     unsigned char c, res;
     int delta = 4;
 
-    unsigned char buf[1024];
+    unsigned char buf[2048];
 	buf[0] = 0x7e;
 	int flag = -1;
 	int i = 1;
@@ -726,6 +741,7 @@ int llread (int fd, unsigned char * buffer) {
 
                             sendRR(fd);
                             Nr = 0;
+							cntReceived++;
                             return tramaLength;
                         }
                         else {  //bcc is incorrect
@@ -754,6 +770,7 @@ int llread (int fd, unsigned char * buffer) {
 
                             sendRR(fd);
                             Nr = 1;
+							cntReceived++;
                             return tramaLength;
                         }
                         else {  //data is incorrect
@@ -791,9 +808,9 @@ int llclose(int fd) {
 		//send & receive DISC
 		int resDISC;
 		alarmFlag=1;
-		while(alarmCounter < MAX_RETRANSMISSIONS) {
+		while(alarmCounter < retries) {
         	if(alarmFlag) {
-        		alarm(3);
+        		alarm(timeOut);
     	    	alarmFlag=0;
     	    	sendDISC(fd);
 				resDISC=stateMachineDISC(fd);
@@ -807,6 +824,7 @@ int llclose(int fd) {
 		else {printf("DISC was not received successfully!\n"); return -2;}
 
 		//send UA
+		sleep(1);
 		sendUA(fd);
 
 	} else { /* -------------MODE RECEIVER------------- */
@@ -815,9 +833,9 @@ int llclose(int fd) {
 		alarmCounter=0;
 		alarmFlag=1;
 		int resDISC;
-		while(alarmCounter < MAX_RETRANSMISSIONS) {
+		while(alarmCounter < retries) {
         	if(alarmFlag) {
-        		alarm(3);
+        		alarm(timeOut);
     	    	alarmFlag=0;
 				resDISC=stateMachineDISC(fd);
 				if(resDISC==TRUE) break;
@@ -833,9 +851,9 @@ int llclose(int fd) {
 		alarmCounter=0;
 		alarmFlag=1;
 		int resUA;
-		while(alarmCounter < MAX_RETRANSMISSIONS) {
+		while(alarmCounter < retries) {
         	if(alarmFlag) {
-        		alarm(3);
+        		alarm(timeOut);
     	    	alarmFlag=0;
 				sendDISC(fd);
 				resUA=stateMachineUA(fd);

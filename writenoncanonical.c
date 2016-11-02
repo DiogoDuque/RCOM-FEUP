@@ -1,6 +1,8 @@
 /*Non-Canonical Input Processing*/
 #include "utils.h"
 #include "dataLayer.h"
+#include <time.h>
+#include <stdlib.h>
 
 #define MODEMDEVICE "/dev/ttyS1"
 
@@ -113,7 +115,6 @@ int sendFile(int fd, char* fileName) {
 	printf("\n\n-----> SENDING START PACKAGE <-----\n");
     if (!sendStart(fd, fileSize, fileName)) { fclose(f1); return -2; }
 	
-	int maxPackageSize = 512;
 	int c;
 	int size = 0;
 	int counter = 0;
@@ -136,6 +137,15 @@ int sendFile(int fd, char* fileName) {
 	if (!sendEnd(fd, fileSize, fileName)) return -4;
 }
 
+void printStatus(int code) {
+	printf("\n\n-----> STATUS <-----\n");
+	printf("Packages sent: %d\n", cntTrasmit);
+	printf("Packages re-sent: %d\n", cntRetransmit);
+	printf("Number of time-outs: %d\n", cntTimeOuts);
+	printf("REJ received: %d\n", cntRejReceived);
+
+	exit(code);
+}
 
 int main(int argc, char** argv) {
 	char * fileName = "pinguim - Copy.gif";
@@ -143,19 +153,25 @@ int main(int argc, char** argv) {
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
-        printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
+        printf("Usage:\tnserial SerialPort [FileName]\t[MaxPackageSize] [Retries] [TimeOut]\n");
+		printf("\tex: nserial /dev/ttyS1 [pinguin.gif]\t[512] [3] [3]\n");
         exit(1);
-    } else if (argc == 3) {
+	} else if (argc == 3) {
 		fileName = argv[2];
-	}
-
+    } else if (argc == 6) {
+		fileName = argv[2];
+		maxPackageSize = (int) strtol(argv[3], NULL, 10);
+		retries = (int) strtol(argv[4], NULL, 10);
+		timeOut = (int) strtol(argv[5], NULL, 10);
+	} 
+	
     (void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
 	int fd=-1;
 	alarmFlag=1;
 
-    while(alarmCounter < MAX_RETRANSMISSIONS) {
+    while(alarmCounter < retries) {
         if(alarmFlag) {
-        alarm(3);
+        alarm(timeOut);
         alarmFlag=0;
 		fd=llopen(argv[1], TRANSMITTER);
 		if(fd>0) break;
@@ -188,23 +204,23 @@ int main(int argc, char** argv) {
 	switch(llclose(fd)){
 	case 0:
 		printf("Closed receiver successfully!\n");
-		return 0;
+		printStatus(0);
 
 	case 1:
 		printf("Error closing file descriptor...\n");
-		return 1;
+		printStatus(1);
 
 	case 2:
 		printf("Error with tcsetattr()...\n");
-		return 2;
+		printStatus(2);
 
 	case 3:
 		printf("Error closing file descriptor and with tcsetattr()...\n");
-		return 3;
+		printStatus(3);
 
 	default:
-		return -1;
+		printStatus(-1);
 	}
 
-	return -1;
+	printStatus(-1);
 }
