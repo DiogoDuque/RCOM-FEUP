@@ -1,8 +1,7 @@
 /*Non-Canonical Input Processing*/
+
 #include "utils.h"
 #include "dataLayer.h"
-#include <time.h>
-#include <stdlib.h>
 
 #define MODEMDEVICE "/dev/ttyS1"
 
@@ -95,7 +94,7 @@ int sendEnd(int fd, char* fileSize, char* fileName) {
 
 int sendFile(int fd, char* fileName) {
 	printf("\n\n-----> SENDING FILE ");
-	printf(fileName);
+	printf("%s",fileName);
 	printf(" <-----\n");
 
 	FILE * f1 = fopen(fileName, "r");

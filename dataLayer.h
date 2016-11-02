@@ -1,3 +1,5 @@
+#include <time.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -35,6 +37,9 @@ int Nr = 1;
 int flags; //for nonblock write
 
 int init(char* port) {
+	int seed = time(NULL);
+    srand(seed);
+
 	int fd = open(port, O_RDWR | O_NOCTTY );
     if (fd <0) {perror(port); exit(-1); }
 
@@ -99,7 +104,7 @@ void sendSET(int fd){ //cmd
 	msg[2]=0x03; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
-	printHex(msg,5);
+	//printHex(msg,5);
 	if(!sendMessage(fd,msg,5)==TRUE)
 		printf("SET sent successfully!\n");
 	printf("Warning: SET was not sent successfully!\n");
@@ -112,7 +117,7 @@ void sendUA(int fd){ //ans
 	msg[2]=0x07; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
-	printHex(msg,5);
+	//printHex(msg,5);
 	if(sendMessage(fd,msg,5)==TRUE)
 		printf("UA sent successfully!\n");
 	else printf("Warning: UA was not sent successfully!\n");
@@ -138,7 +143,7 @@ void sendRR(int fd){
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
 	if(sendMessage(fd,msg,5)==TRUE)
-		printf("RR sent successfully!\n");
+		printf("RR(%d) sent successfully!\n", Nr);
 	else printf("Warning: RR was not sent successfully!\n");
 }
 
@@ -717,8 +722,8 @@ int llread (int fd, unsigned char * buffer) {
 
         if (trama.address^trama.control == trama.bcc1){    //i.e. if header is correct
             //llread does will never receive tramas of type RR or REJ
-			printf("TRAMA CONTROL ");
-			printHex(&trama.control, 1);
+			//printf("TRAMA CONTROL ");
+			//printHex(&trama.control, 1);
             switch(trama.control){/*
                 case SET:
                     sendUA(fd);

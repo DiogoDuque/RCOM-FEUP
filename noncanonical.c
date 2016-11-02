@@ -1,7 +1,6 @@
 /*Non-Canonical Input Processing*/
 #include "utils.h"
 #include "dataLayer.h"
-#include <time.h>
 #include <stdlib.h>
 
 struct at_control {
@@ -180,7 +179,7 @@ int main(int argc, char** argv){
                 readData(buffer, &data);
 
                 if (data.n == (n)){
-                    printHex(data.data, data.k);
+                    //printHex(data.data, data.k);
                     fwrite(data.data, 1, data.k, f1);
                     printf("\nRead package #%d\n", n);
                     n++;
