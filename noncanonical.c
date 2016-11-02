@@ -152,7 +152,7 @@ int main(int argc, char** argv){
                 if (sf_control.control == 0x02){
                     //create file with name: sf_control.filename
                     printf("---->%s\n", sf_control.fileName);
-                    f1 = fopen(sf_control.fileName, "a+");   //might change to open(3)
+                    f1 = fopen(sf_control.fileName, "w");   //might change to open(3)
                     //f1 = fopen("pguin.gif", "w");   //might change to open(3)
                     //fclose(f1);
                 }

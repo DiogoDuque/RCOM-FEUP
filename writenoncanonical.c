@@ -148,7 +148,7 @@ void printStatus(int code) {
 }
 
 int main(int argc, char** argv) {
-	char * fileName = "pinguim - Copy.gif";
+	char * fileName = "pinguim.gif";
 
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
