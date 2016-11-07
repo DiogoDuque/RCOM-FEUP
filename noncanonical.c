@@ -105,14 +105,12 @@ int main(int argc, char** argv){
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
-        printf("Usage:\tnserial SerialPort [MaxPackageSize (1024 MAX)] [Retries] [TimeOut]\n");
+        printf("Usage:\tnserial SerialPort [Retries] [TimeOut]\n");
 		printf("\tex: nserial /dev/ttyS1 [512] [3] [3]\n");
         exit(1);
-    } else if (argc == 5) {
-		maxPackageSize = (int) strtol(argv[2], NULL, 10);
-        maxPackageSize = maxPackageSize > 1024 ? 1024 : maxPackageSize;
-		retries = (int) strtol(argv[3], NULL, 10);
-		timeOut = (int) strtol(argv[4], NULL, 10);
+    } else if (argc == 4) {
+		retries = (int) strtol(argv[2], NULL, 10);
+		timeOut = (int) strtol(argv[3], NULL, 10);
 	} 
 
 	(void) signal(SIGALRM, atende); // Instala a rotina que atende interrupcao
