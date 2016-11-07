@@ -36,6 +36,11 @@ int mode;
 int Nr = 1;
 int flags; //for nonblock write
 
+/**
+ * Handles all the initialization code related to opening the serial port.
+ * @param port port to be used for sending and receiving tramas.
+ * @return file descriptor to read/write from/to the serial port.
+ */
 int init(char* port) {
 	int seed = time(NULL);
     srand(seed);
@@ -70,33 +75,45 @@ int init(char* port) {
 	return fd;
 }
 
+/**
+ * Reads a byte from the fd.
+ * @fd file descriptor used to read the trama.
+ * @return byte read. if alarmFlag is on, returns 0 instead.
+ */
 unsigned char receiveMessage(int fd) {
 	unsigned char buf[16];
     int res;
 	while((res = read(fd,buf,1)) <= 0)
 		if(alarmFlag)
 			return 0x00;
-   	//buf[res]='\0';          /* so we can printf... */
-	//printHex(buf, 1);
-	
+
 	return buf[0];
 }
 
-//tries to send a message. if was properly sent, returns TRUE; otherwise returns FALSE
+/**
+ * Attempts to send a trama.
+ * @param fd file descriptor used to send the trama.
+ * @param msg trama to send.
+ * @param size size of the trama.
+ * @return TRUE if trama was properly sent; FALSE otherwise.
+ */
 int sendMessage(int fd, unsigned char* msg, int size) {
 	char tmp = msg[size/2];
-	if(generateError != 0) {
+	if(generateError != 0) { //generate possible error
 		printf("Sending message with errors!\n");
 		generateError = 0;
 		msg[size/2] = 0x00;
 	}
     int res = write(fd,msg,size);
-    //printf("writing: «%s»; written %d of %d written\n\n\n", msg,res,size);
 	msg[size/2] = tmp;
 	if(res==size) return TRUE;
 	else return FALSE;
 }
 
+/**
+ * Attempts to send a SET.
+ * @param fd file descriptor used to send the trama.
+ */
 void sendSET(int fd){ //cmd
 	unsigned char msg[5];
 	msg[0]=FLAG; //F
@@ -104,12 +121,16 @@ void sendSET(int fd){ //cmd
 	msg[2]=0x03; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
-	//printHex(msg,5);
+
 	if(!sendMessage(fd,msg,5)==TRUE)
 		printf("SET sent successfully!\n");
 	printf("Warning: SET was not sent successfully!\n");
 }
 
+/**
+ * Attempts to send an UA.
+ * @param fd file descriptor used to send the trama.
+ */
 void sendUA(int fd){ //ans
 	unsigned char msg[5];
 	msg[0]=FLAG; //F
@@ -117,12 +138,16 @@ void sendUA(int fd){ //ans
 	msg[2]=0x07; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
-	//printHex(msg,5);
+	
 	if(sendMessage(fd,msg,5)==TRUE)
 		printf("UA sent successfully!\n");
 	else printf("Warning: UA was not sent successfully!\n");
 }
 
+/**
+ * Attempts to send a DISC.
+ * @param fd file descriptor used to send the trama.
+ */
 void sendDISC(int fd){ //cmd
 	unsigned char msg[5];
 	msg[0]=FLAG; //F
@@ -130,11 +155,16 @@ void sendDISC(int fd){ //cmd
 	msg[2]=0x0B; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
+	
 	if(sendMessage(fd,msg,5)==TRUE)
 		printf("DISC sent successfully!\n");
 	else printf("Warning: DISC was not sent successfully!\n");
 }
 
+/**
+ * Attempts to send a RR.
+ * @param fd file descriptor used to send the trama.
+ */
 void sendRR(int fd){
     unsigned char msg[5];
 	msg[0]=FLAG; //F
@@ -142,11 +172,16 @@ void sendRR(int fd){
 	msg[2]=Nr==0?0x05:0x85; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
+	
 	if(sendMessage(fd,msg,5)==TRUE)
 		printf("RR(%d) sent successfully!\n", Nr);
 	else printf("Warning: RR was not sent successfully!\n");
 }
 
+/**
+ * Attempts to send a REJ.
+ * @param fd file descriptor used to send the trama.
+ */
 void sendREJ(int fd){
     unsigned char msg[5];
 	msg[0]=FLAG; //F
@@ -154,6 +189,7 @@ void sendREJ(int fd){
 	msg[2]=Nr==0?REJ0:REJ1; //C
 	msg[3]=msg[1]^msg[2]; //BCC1
 	msg[4]=FLAG; //F
+	
 	if(sendMessage(fd,msg,5)==TRUE) {
 		printf("REJ sent successfully!\n");
 		cntRejSend++;
@@ -161,6 +197,11 @@ void sendREJ(int fd){
 	else printf("Warning: REJ was not sent successfully!\n");
 }
 
+/**
+ * State machine that tries to read a SET.
+ * @param fd file descriptor used to send the trama.
+ * @return TRUE if there was no problem with the SET; FALSE otherwise.
+ */
 int stateMachineSET(int fd) {
 	unsigned char msg[255];
 	state st = START;
@@ -176,14 +217,12 @@ int stateMachineSET(int fd) {
 		switch(st) {
 
 		case START:
-			//printf("START\n");
 			if(info!=0x7E)
 				st=START;
 			else st=FIRST_F;
 			break;
 
 		case FIRST_F:
-			//printf("FIRST_F\n");
 			if(info==0x7E)
 				st=FIRST_F;
 			else {
@@ -195,7 +234,6 @@ int stateMachineSET(int fd) {
 			break;
 
 		case READING:
-			//printf("READING\n");
 			msg[counter]=info;
 			counter++;
 			if(info!=0x7E)
@@ -204,7 +242,6 @@ int stateMachineSET(int fd) {
 			break;
 
 		case LAST_F:
-			//printf("LAST_F\n");
 			printf("RECEIVING SET: ");
 			printHex(msg,counter);
 
@@ -233,6 +270,11 @@ int stateMachineSET(int fd) {
 	}
 }
 
+/**
+ * State machine that tries to read a UA.
+ * @param fd file descriptor used to send the trama.
+ * @return TRUE if there was no problem with the UA; FALSE otherwise.
+ */
 int stateMachineUA(int fd) {
 	unsigned char msg[255];
 	state st = START;
@@ -249,14 +291,12 @@ int stateMachineUA(int fd) {
 		switch(st) {
 
 		case START:
-			//printf("START\n");
 			if(info!=0x7E)
 				st=START;
 			else st=FIRST_F;
 			break;
 
 		case FIRST_F:
-			//printf("FIRST_F\n");
 			if(info==0x7E)
 				st=FIRST_F;
 			else {
@@ -268,7 +308,6 @@ int stateMachineUA(int fd) {
 			break;
 
 		case READING:
-			//printf("READING\n");
 			msg[counter]=info;
 			counter++;
 			if(info!=0x7E)
@@ -277,7 +316,6 @@ int stateMachineUA(int fd) {
 			break;
 
 		case LAST_F:
-			//printf("LAST_F\n");
 			printf("RECEIVING UA: ");
 			printHex(msg,counter);
 
@@ -312,12 +350,9 @@ int stateMachineUA(int fd) {
 }
 
 /**
- * return = -2 -> alarmed
- *			-1 -> trama error
- *			0 -> REJ R(0)
- *			1 -> REJ R(1)
- *			2 -> RR R(0)
- *			3 -> RR R(1)
+ * State machine that tries to read a REJ or RR.
+ * @param fd file descriptor used to send the trama.
+ * @return -2 if alarmFlag was on, -1 if the trama had some sort of error, 0 if REJ(0), 1 if REJ(1), 2 if RR(0), 3 if RR(1).
  */
 int stateMachineR(int fd) {
 	unsigned char msg[255];
@@ -335,14 +370,12 @@ int stateMachineR(int fd) {
 		switch(st) {
 
 		case START:
-			//printf("START\n");
 			if(info!=0x7E)
 				st=START;
 			else st=FIRST_F;
 			break;
 
 		case FIRST_F:
-			//printf("FIRST_F\n");
 			if(info==0x7E)
 				st=FIRST_F;
 			else {
@@ -354,7 +387,6 @@ int stateMachineR(int fd) {
 			break;
 
 		case READING:
-			//printf("READING\n");
 			msg[counter]=info;
 			counter++;
 			if(info!=0x7E)
@@ -364,7 +396,6 @@ int stateMachineR(int fd) {
 			break;
 
 		case LAST_F:
-			//printf("LAST_F\n");
 			printf("RECEIVING R: ");
 			printHex(msg,counter);
 
@@ -414,6 +445,11 @@ int stateMachineR(int fd) {
 	}
 }
 
+/**
+ * State machine that tries to read a DISC.
+ * @param fd file descriptor used to send the trama.
+ * @return TRUE if there was no problem with the DISC; FALSE otherwise.
+ */
 int stateMachineDISC(int fd) {
 	unsigned char msg[255];
 	state st = START;
@@ -430,14 +466,12 @@ int stateMachineDISC(int fd) {
 		switch(st) {
 
 		case START:
-			//printf("START\n");
 			if(info!=0x7E)
 				st=START;
 			else st=FIRST_F;
 			break;
 
 		case FIRST_F:
-			//printf("FIRST_F\n");
 			if(info==0x7E)
 				st=FIRST_F;
 			else {
@@ -449,7 +483,6 @@ int stateMachineDISC(int fd) {
 			break;
 
 		case READING:
-			//printf("READING\n");
 			msg[counter]=info;
 			counter++;
 			if(info!=0x7E)
@@ -458,7 +491,6 @@ int stateMachineDISC(int fd) {
 			break;
 
 		case LAST_F:
-			//printf("LAST_F\n");
 			printf("RECEIVING DISC: ");
 			printHex(msg,counter);
 
@@ -492,6 +524,12 @@ int stateMachineDISC(int fd) {
 	}
 }
 
+/**
+ * Starts the communication between the Transmitter and the Receiver.
+ * @param port port to be used for sending and receiving tramas.
+ * @param flag indicates if the caller is the Transmitter or the Receiver.
+ * @return -2 if flag was wrong, -1 if didn't receive the trama successfully, else returns the file descriptor to read/write from/to the serial port.
+ */
 int llopen(char* port, int flag) {
 	mode = flag;
 	int fd = init(port);
@@ -521,6 +559,13 @@ int llopen(char* port, int flag) {
 	} else return -2;
 }
 
+/**
+ * Writes buffer to fd.
+ * @param fd file descriptor.
+ * @param buffer trama to send.
+ * @param length trama length.
+ * @return TRUE if trama was successfully sent, FALSE otherwise.
+ */
 int llwrite(int fd, unsigned char* buffer, int length) {
 	int size = length + 5;
 	unsigned char package [2*length + 5];
@@ -590,11 +635,11 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 }
 
 /**
-*   calculates expected bcc value from given buffer
-*   @param  buf     buffer of bytes on which bcc will be calculated
-*   @param  bufLength   length of buf array
-*   @return bcc's expected value
-*/
+ * Calculates expected bcc value from given buffer
+ * @param buf        buffer of bytes on which bcc will be calculated
+ * @param bufLength  length of buf array
+ * @return bcc's expected value
+ */
 unsigned char calcBCC(unsigned char * buf, int bufLength){
     int i = 0;
     unsigned char res = 0x00;
@@ -614,11 +659,11 @@ struct Trama {
 };
 
 /**
-*   reads fd's content and loads trama's fields accordingly
-*   @param fd       file descriptor
-*   @param trama    empty Trama to fill with information from fd
-*   @return trama's size, in bytes
-*/
+ * reads fd's content and loads trama's fields accordingly.
+ * @param fd     file descriptor.
+ * @param trama  empty Trama to fill with information from fd.
+ * @return trama's size, in bytes.
+ */
 int readTrama(int fd, struct Trama * trama){
     int nrBytes = 0;
     int r;
@@ -707,6 +752,12 @@ int readTrama(int fd, struct Trama * trama){
     return -1;
 }
 
+/**
+ * Reads a trama from the fd.
+ * @param fd file descriptor.
+ * @param buffer where to read trama.
+ * @return -1 if there was an error on the trama, 0 if found a duplicated, else returns the trama length.
+ */
 int llread (int fd, unsigned char * buffer) {
     struct Trama trama;
     int i;
@@ -722,23 +773,12 @@ int llread (int fd, unsigned char * buffer) {
 
         if (trama.address^trama.control == trama.bcc1){    //i.e. if header is correct
             //llread does will never receive tramas of type RR or REJ
-			//printf("TRAMA CONTROL ");
-			//printHex(&trama.control, 1);
-            switch(trama.control){/*
-                case SET:
-                    sendUA(fd);
-                    break;
-                case UA:
-                    //file transfer over
-                    //...
-                    break;*/
+            switch(trama.control){
                 case INF0:  //Ns = 0
                     if (Nr == 1){   //data is not duplicate
                         if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
                             //accept trama
 							printf("BCC TRUE ");
-                            //struct at_control sf_control;
-                            //readControl(trama.data, &sf_control);
 
                             for (i = 0; i < trama.dataLength; i++){
                                 buffer[i] = trama.data[i];
@@ -761,14 +801,11 @@ int llread (int fd, unsigned char * buffer) {
                         return 0;
                     }
                     break;
+                
                 case INF1:  //Ns = 1
                     if (Nr == 0){   //data is not duplicate
                         if (calcBCC(trama.data, trama.dataLength) == trama.bcc2){   //data bcc is correct
                             //accept trama
-
-                            //struct at_control sf_control;
-                            //readControl(trama.data, &sf_control);
-
                             for (i = 0; i < trama.dataLength; i++){
                                 buffer[i] = trama.data[i];
                             }
@@ -787,10 +824,8 @@ int llread (int fd, unsigned char * buffer) {
                         sendRR(fd);
                         return 0;
                     }
-                    break;/*
-                case DISC:
-                    sendDISC(fd);
-                    break;*/
+                    break;
+
                 default:
                     perror("invalid CONTROL value\n");
                     return -1;
@@ -804,6 +839,11 @@ int llread (int fd, unsigned char * buffer) {
     }
 }
 
+/**
+ * Attempts to finish communications between the Transmitter and the Receiver.
+ * @param fd file descriptor.
+ * @return 0 if everything went right, -1 if Receiver didn't receive DISC, -2 if Transmitter didn't receive DISC, -3 if Receiver didn't receive UA, 1 if there was an error closing fd, 2 if there was an error calling tcsetattr, 3 if the last two results happened simultaneously.
+ */
 int llclose(int fd) {
 	printf("Starting to close...\n\n");
 
