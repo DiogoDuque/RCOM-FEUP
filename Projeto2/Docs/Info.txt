@@ -1,0 +1,3 @@
+Config file:
+copy running-config flash:turma03-diogo-filipe-gustavo
+Destination filename [turma03-diogo-filipe-gustavo]
