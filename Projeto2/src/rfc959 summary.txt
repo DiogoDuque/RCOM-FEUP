@@ -1,0 +1,359 @@
+-------------------------------------------------------
+
+There are five values for the first digit of the reply code:
+
+            1yz   Positive Preliminary reply
+
+               The requested action is being initiated; expect another
+               reply before proceeding with a new command.  (The
+               user-process sending another command before the
+               completion reply would be in violation of protocol; but
+               server-FTP processes should queue any commands that
+               arrive while a preceding command is in progress.)  This
+               type of reply can be used to indicate that the command
+               was accepted and the user-process may now pay attention
+               to the data connections, for implementations where
+               simultaneous monitoring is difficult.  The server-FTP
+               process may send at most, one 1yz reply per command.
+
+            2yz   Positive Completion reply
+
+               The requested action has been successfully completed.  A
+               new request may be initiated.
+
+            3yz   Positive Intermediate reply
+
+               The command has been accepted, but the requested action
+               is being held in abeyance, pending receipt of further
+               information.  The user should send another command
+               specifying this information.  This reply is used in
+               command sequence groups.
+
+            4yz   Transient Negative Completion reply
+
+               The command was not accepted and the requested action did
+               not take place, but the error condition is temporary and
+               the action may be requested again.  The user should
+               return to the beginning of the command sequence, if any.
+               It is difficult to assign a meaning to "transient",
+               particularly when two distinct sites (Server- and
+               User-processes) have to agree on the interpretation.
+               Each reply in the 4yz category might have a slightly
+               different time value, but the intent is that the
+               user-process is encouraged to try again.  A rule of thumb
+               in determining if a reply fits into the 4yz or the 5yz
+               (Permanent Negative) category is that replies are 4yz if
+               the commands can be repeated without any change in
+               command form or in properties of the User or Server
+               (e.g., the command is spelled the same with the same
+               arguments used; the user does not change his file access
+               or user name; the server does not put up a new
+               implementation.)
+
+            5yz   Permanent Negative Completion reply
+
+               The command was not accepted and the requested action did
+               not take place.  The User-process is discouraged from
+               repeating the exact request (in the same sequence).  Even
+               some "permanent" error conditions can be corrected, so
+               the human user may want to direct his User-process to
+               reinitiate the command sequence by direct action at some
+               point in the future (e.g., after the spelling has been
+               changed, or the user has altered his directory status.)
+
+         The following function groupings are encoded in the second
+         digit:
+
+            x0z   Syntax - These replies refer to syntax errors,
+                  syntactically correct commands that don't fit any
+                  functional category, unimplemented or superfluous
+                  commands.
+
+            x1z   Information -  These are replies to requests for
+                  information, such as status or help.
+
+            x2z   Connections - Replies referring to the control and
+                  data connections.
+
+            x3z   Authentication and accounting - Replies for the login
+                  process and accounting procedures.
+
+            x4z   Unspecified as yet.
+
+            x5z   File system - These replies indicate the status of the
+                  Server file system vis-a-vis the requested transfer or
+                  other file system action.
+
+         The third digit gives a finer gradation of meaning in each of
+         the function categories, specified by the second digit.  The
+         list of replies below will illustrate this.  Note that the text
+         ssociated with each reply is recommended, rather than
+         mandatory, and may even change according to the command with
+         which it is associated.  The reply codes, on the other hand,
+         must strictly follow the specifications in the last section;
+         that is, Server implementations should not invent new codes for
+         situations that are only slightly different from the ones
+         described here, but rather should adapt codes already defined.
+
+            A command such as TYPE or ALLO whose successful execution
+            does not offer the user-process any new information will
+            cause a 200 reply to be returned.  If the command is not
+            implemented by a particular Server-FTP process because it
+            has no relevance to that computer system, for example ALLO
+            at a TOPS20 site, a Positive Completion reply is still
+            desired so that the simple User-process knows it can proceed
+            with its course of action.  A 202 reply is used in this case
+            with, for example, the reply text:  "No storage allocation
+            necessary."  If, on the other hand, the command requests a
+            non-site-specific action and is unimplemented, the response
+            is 502.  A refinement of that is the 504 reply for a command
+            that is implemented, but that requests an unimplemented
+            parameter.
+
+----------------------------------------------------------------------
+
+5.3.1.  FTP COMMANDS
+
+         The following are the FTP commands:
+
+            USER <SP> <username> <CRLF>
+            PASS <SP> <password> <CRLF>
+            ACCT <SP> <account-information> <CRLF>
+            CWD  <SP> <pathname> <CRLF>
+            CDUP <CRLF>
+            SMNT <SP> <pathname> <CRLF>
+            QUIT <CRLF>
+            REIN <CRLF>
+            PORT <SP> <host-port> <CRLF>
+            PASV <CRLF>
+            TYPE <SP> <type-code> <CRLF>
+            STRU <SP> <structure-code> <CRLF>
+            MODE <SP> <mode-code> <CRLF>
+            RETR <SP> <pathname> <CRLF>
+            STOR <SP> <pathname> <CRLF>
+            STOU <CRLF>
+            APPE <SP> <pathname> <CRLF>
+            ALLO <SP> <decimal-integer>
+                [<SP> R <SP> <decimal-integer>] <CRLF>
+            REST <SP> <marker> <CRLF>
+            RNFR <SP> <pathname> <CRLF>
+            RNTO <SP> <pathname> <CRLF>
+            ABOR <CRLF>
+            DELE <SP> <pathname> <CRLF>
+            RMD  <SP> <pathname> <CRLF>
+            MKD  <SP> <pathname> <CRLF>
+            PWD  <CRLF>
+            LIST [<SP> <pathname>] <CRLF>
+            NLST [<SP> <pathname>] <CRLF>
+            SITE <SP> <string> <CRLF>
+            SYST <CRLF>
+            STAT [<SP> <pathname>] <CRLF>
+            HELP [<SP> <string>] <CRLF>
+            NOOP <CRLF>
+
+------------------------------------------------------------------
+
+Command-Reply Sequences
+
+         In this section, the command-reply sequence is presented.  Each
+         command is listed with its possible replies; command groups are
+         listed together.  Preliminary replies are listed first (with
+         their succeeding replies indented and under them), then
+         positive and negative completion, and finally intermediary
+         replies with the remaining commands from the sequence
+         following.  This listing forms the basis for the state
+         diagrams, which will be presented separately.
+
+            Connection Establishment
+               120
+                  220
+               220
+               421
+            Login
+               USER
+                  230
+                  530
+                  500, 501, 421
+                  331, 332
+               PASS
+                  230
+                  202
+                  530
+                  500, 501, 503, 421
+                  332
+               ACCT
+                  230
+                  202
+                  530
+                  500, 501, 503, 421
+               CWD
+                  250
+                  500, 501, 502, 421, 530, 550
+               CDUP
+                  200
+                  500, 501, 502, 421, 530, 550
+               SMNT
+                  202, 250
+                  500, 501, 502, 421, 530, 550
+            Logout
+               REIN
+                  120
+                     220
+                  220
+                  421
+                  500, 502
+               QUIT
+                  221
+                  500
+                  Transfer parameters
+               PORT
+                  200
+                  500, 501, 421, 530
+               PASV
+                  227
+                  500, 501, 502, 421, 530
+               MODE
+                  200
+                  500, 501, 504, 421, 530
+               TYPE
+                  200
+                  500, 501, 504, 421, 530
+               STRU
+                  200
+                  500, 501, 504, 421, 530
+            File action commands
+               ALLO
+                  200
+                  202
+                  500, 501, 504, 421, 530
+               REST
+                  500, 501, 502, 421, 530
+                  350
+               STOR
+                  125, 150
+                     (110)
+                     226, 250
+                     425, 426, 451, 551, 552
+                  532, 450, 452, 553
+                  500, 501, 421, 530
+               STOU
+                  125, 150
+                     (110)
+                     226, 250
+                     425, 426, 451, 551, 552
+                  532, 450, 452, 553
+                  500, 501, 421, 530
+               RETR
+                  125, 150
+                     (110)
+                     226, 250
+                     425, 426, 451
+                  450, 550
+                  500, 501, 421, 530
+                  LIST
+                  125, 150
+                     226, 250
+                     425, 426, 451
+                  450
+                  500, 501, 502, 421, 530
+               NLST
+                  125, 150
+                     226, 250
+                     425, 426, 451
+                  450
+                  500, 501, 502, 421, 530
+               APPE
+                  125, 150
+                     (110)
+                     226, 250
+                     425, 426, 451, 551, 552
+                  532, 450, 550, 452, 553
+                  500, 501, 502, 421, 530
+               RNFR
+                  450, 550
+                  500, 501, 502, 421, 530
+                  350
+               RNTO
+                  250
+                  532, 553
+                  500, 501, 502, 503, 421, 530
+               DELE
+                  250
+                  450, 550
+                  500, 501, 502, 421, 530
+               RMD
+                  250
+                  500, 501, 502, 421, 530, 550
+               MKD
+                  257
+                  500, 501, 502, 421, 530, 550
+               PWD
+                  257
+                  500, 501, 502, 421, 550
+               ABOR
+                  225, 226
+                  500, 501, 502, 421
+            Informational commands
+               SYST
+                  215
+                  500, 501, 502, 421
+               STAT
+                  211, 212, 213
+                  450
+                  500, 501, 502, 421, 530
+               HELP
+                  211, 214
+                  500, 501, 502, 421
+            Miscellaneous commands
+               SITE
+                  200
+                  202
+                  500, 501, 530
+               NOOP
+                  200
+                  500 421
+
+------------------------------------------------------------
+
+7.  TYPICAL FTP SCENARIO
+
+   User at host U wanting to transfer files to/from host S:
+
+   In general, the user will communicate to the server via a mediating
+   user-FTP process.  The following may be a typical scenario.  The
+   user-FTP prompts are shown in parentheses, '---->' represents
+   commands from host U to host S, and '<----' represents replies from
+   host S to host U.
+
+      LOCAL COMMANDS BY USER              ACTION INVOLVED
+
+      ftp (host) multics<CR>         Connect to host S, port L,
+                                     establishing control connections.
+                                     <---- 220 Service ready <CRLF>.
+      username Doe <CR>              USER Doe<CRLF>---->
+                                     <---- 331 User name ok,
+                                               need password<CRLF>.
+      password mumble <CR>           PASS mumble<CRLF>---->
+                                     <---- 230 User logged in<CRLF>.
+      retrieve (local type) ASCII<CR>
+      (local pathname) test 1 <CR>   User-FTP opens local file in ASCII.
+      (for. pathname) test.pl1<CR>   RETR test.pl1<CRLF> ---->
+                                     <---- 150 File status okay;
+                                           about to open data
+                                           connection<CRLF>.
+                                     Server makes data connection
+                                     to port U.
+
+                                     <---- 226 Closing data connection,
+                                         file transfer successful<CRLF>.
+      type Image<CR>                 TYPE I<CRLF> ---->
+                                     <---- 200 Command OK<CRLF>
+      store (local type) image<CR>
+      (local pathname) file dump<CR> User-FTP opens local file in Image.
+      (for.pathname) >udd>cn>fd<CR>  STOR >udd>cn>fd<CRLF> ---->
+                                     <---- 550 Access denied<CRLF>
+      terminate                      QUIT <CRLF> ---->
+                                     Server closes all
+                                     connections.
+
+-----------------------------------------------------------------
