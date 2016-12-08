@@ -15,7 +15,6 @@
 
 
 char* getIP(char* hostname) {
-
 	struct hostent *h;
 
     if((h=gethostbyname(hostname)) == NULL) {  
@@ -23,18 +22,14 @@ char* getIP(char* hostname) {
         exit(1);
     }
 
-    printf("Host name  : %s\n", h->h_name);
-    printf("IP Address : %s\n\n",inet_ntoa(*((struct in_addr *)h->h_addr)));
     return inet_ntoa(*((struct in_addr *)h->h_addr));
 }
 
 void getResponse(int sockfd){
 	char response[256];
-	int bytes;
 
 	memset(response, 0, 256);
-	bytes = read(sockfd, response, 50);
-	printf("bytes: %d\n",bytes);
+	read(sockfd, response, 50);
 	printf("Server response: %s\n", response);
 }
 
@@ -47,11 +42,10 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	}
 
 
-	int	sockfd;
+	int	sockfd, bytes;
 	struct sockaddr_in server_addr;
-	char buf[] = "Mensagem de teste na travessia da pilha TCP/IP\n";  
-	int	bytes;
 	char hostname[128], path[128], user[128], pass[128];
+	char separator[] = "-----------------------\n\n";
 
 
 	/*get info from url (with reg expr)*/
@@ -64,12 +58,13 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 		printf("Host: %s\n", hostname);
 		printf("Path: %s\n", path);
 		strcpy(user, "Anonymous");
-		strcpy(pass, "password");
+		strcpy(pass, "1213456789");
 	}else {
 		perror("Invalid URL! Usage: ftp ftp://[<user>:<password>@]<host>/<url-path>");
 		exit(0);
 	}
 	char* SERVER_ADDR = getIP(hostname);
+	printf("IP Address : %s\n\n",SERVER_ADDR);
 	
 
 	/*server address handling*/
@@ -93,13 +88,35 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
        	perror("connect()");
 		exit(0);
 	}
-
-
-   	/*send a string to the server*/
-	bytes = write(sockfd, buf, strlen(buf));
-	printf("Bytes escritos %d\n", bytes);
-
 	getResponse(sockfd);
+	printf("%s",separator);
+
+
+	char cmd[128];
+
+   	/*send user to the server*/
+	strcpy(cmd, "USER ");
+	strcat(cmd, user);
+	strcat(cmd, "\n");
+	bytes = write(sockfd, cmd, strlen(cmd));
+	printf("User cmd: %s\n",cmd);
+	if(bytes != strlen(cmd))
+		printf("Warning: cmd may have not been fully sent...\n");
+	getResponse(sockfd);
+	printf("%s",separator);
+
+
+	/*send pass to the server*/
+	strcpy(cmd, "PASS ");
+	strcat(cmd, pass);
+	strcat(cmd, "\n");
+	bytes = write(sockfd, cmd, strlen(cmd));
+	printf("User cmd: %s\n",cmd);
+	if(bytes != strlen(cmd))
+		printf("Warning: cmd may have not been fully sent...\n");
+	getResponse(sockfd);
+	printf("%s",separator);
+
 
 	close(sockfd);
 	exit(0);
