@@ -28,6 +28,16 @@ char* getIP(char* hostname) {
     return inet_ntoa(*((struct in_addr *)h->h_addr));
 }
 
+void getResponse(int sockfd){
+	char response[256];
+	int bytes;
+
+	memset(response, 0, 256);
+	bytes = read(sockfd, response, 50);
+	printf("bytes: %d\n",bytes);
+	printf("Server response: %s\n", response);
+}
+
 
 int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 
@@ -88,6 +98,8 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
    	/*send a string to the server*/
 	bytes = write(sockfd, buf, strlen(buf));
 	printf("Bytes escritos %d\n", bytes);
+
+	getResponse(sockfd);
 
 	close(sockfd);
 	exit(0);
