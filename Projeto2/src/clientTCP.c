@@ -11,8 +11,6 @@
 #include <netdb.h>
 #include <strings.h>
 
-#define SERVER_PORT 21
-
 
 char* getIP(char* hostname) {
 	struct hostent *h;
@@ -25,7 +23,7 @@ char* getIP(char* hostname) {
     return inet_ntoa(*((struct in_addr *)h->h_addr));
 }
 
-void interact(int sockfd, char* cmd){
+char* interact(int sockfd, char* cmd){
 	char response[256], separator[] = "-----------------------\n\n";;
 
 	int bytes = write(sockfd, cmd, strlen(cmd));
@@ -37,6 +35,8 @@ void interact(int sockfd, char* cmd){
 	read(sockfd, response, 50);
 	printf("Server response: %s\n", response);
 	printf("%s",separator);
+
+	return (char*)response;
 }
 
 
@@ -48,9 +48,9 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	}
 
 
-	int	sockfd, bytes;
+	int	sockfd, bytes, SERVER_PORT = 21;
 	struct sockaddr_in server_addr;
-	char hostname[128], path[128], user[128], pass[128], response[128];
+	char hostname[128], path[128], user[128], pass[128], response[128], * SERVER_ADDR;
 
 
 	/*get info from url (with reg expr)*/
@@ -68,7 +68,7 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 		perror("Invalid URL! Usage: ftp ftp://[<user>:<password>@]<host>/<url-path>");
 		exit(0);
 	}
-	char* SERVER_ADDR = getIP(hostname);
+	SERVER_ADDR = getIP(hostname);
 	printf("IP Address : %s\n\n",SERVER_ADDR);
 	
 
@@ -100,17 +100,41 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 
 	char cmd[128];
 
-   	/*send user to the server*/
+   	/*send user*/
 	strcpy(cmd, "USER ");
 	strcat(cmd, user);
 	strcat(cmd, "\n");
 	interact(sockfd,cmd);
 	
 
-
-	/*send pass to the server*/
+	/*send pass*/
 	strcpy(cmd, "PASS ");
 	strcat(cmd, pass);
+	strcat(cmd, "\n");
+	interact(sockfd,cmd);
+
+
+	/*pasv*/
+	int pasv[6]; //ip[4]+port[2]
+	strcpy(cmd, "PASV");
+	strcat(cmd, "\n");
+	interact(sockfd,cmd);
+	sscanf(response, "%*[^(](%d,%d,%d,%d,%d,%d)\n", &pasv[0], &pasv[1], &pasv[2], &pasv[3], &pasv[4], &pasv[5]);
+	
+	/*get info about port on which server will be listening*/
+	sprintf(SERVER_ADDR, "%d.%d.%d.%d", pasv[0], pasv[1], pasv[2], pasv[3]);
+	SERVER_PORT=pasv[4]*256 + pasv[5];
+	printf("NEW SOCKET:\nIP: %s\nPORT: %d\n",SERVER_ADDR,SERVER_PORT);
+
+	/*open socket for the server listener*/
+	//TO DO: abrir socket para os novos SERVER_ADDR e SERVER_PORT
+	//...
+
+
+
+	/*ask for the file*/
+	strcpy(cmd, "RETR ");
+	strcat(cmd, path);
 	strcat(cmd, "\n");
 	interact(sockfd,cmd);
 
