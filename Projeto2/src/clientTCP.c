@@ -25,12 +25,18 @@ char* getIP(char* hostname) {
     return inet_ntoa(*((struct in_addr *)h->h_addr));
 }
 
-void getResponse(int sockfd){
-	char response[256];
+void interact(int sockfd, char* cmd){
+	char response[256], separator[] = "-----------------------\n\n";;
+
+	int bytes = write(sockfd, cmd, strlen(cmd));
+	printf("User cmd: %s\n",cmd);
+	if(bytes != strlen(cmd))
+		printf("Warning: cmd may have not been fully sent...\n");
 
 	memset(response, 0, 256);
 	read(sockfd, response, 50);
 	printf("Server response: %s\n", response);
+	printf("%s",separator);
 }
 
 
@@ -44,8 +50,7 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 
 	int	sockfd, bytes;
 	struct sockaddr_in server_addr;
-	char hostname[128], path[128], user[128], pass[128];
-	char separator[] = "-----------------------\n\n";
+	char hostname[128], path[128], user[128], pass[128], response[128];
 
 
 	/*get info from url (with reg expr)*/
@@ -88,8 +93,9 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
        	perror("connect()");
 		exit(0);
 	}
-	getResponse(sockfd);
-	printf("%s",separator);
+	memset(response, 0, 256);
+	read(sockfd, response, 50);
+	printf("Server response: %s\n", response);
 
 
 	char cmd[128];
@@ -98,24 +104,15 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	strcpy(cmd, "USER ");
 	strcat(cmd, user);
 	strcat(cmd, "\n");
-	bytes = write(sockfd, cmd, strlen(cmd));
-	printf("User cmd: %s\n",cmd);
-	if(bytes != strlen(cmd))
-		printf("Warning: cmd may have not been fully sent...\n");
-	getResponse(sockfd);
-	printf("%s",separator);
+	interact(sockfd,cmd);
+	
 
 
 	/*send pass to the server*/
 	strcpy(cmd, "PASS ");
 	strcat(cmd, pass);
 	strcat(cmd, "\n");
-	bytes = write(sockfd, cmd, strlen(cmd));
-	printf("User cmd: %s\n",cmd);
-	if(bytes != strlen(cmd))
-		printf("Warning: cmd may have not been fully sent...\n");
-	getResponse(sockfd);
-	printf("%s",separator);
+	interact(sockfd,cmd);
 
 
 	close(sockfd);
