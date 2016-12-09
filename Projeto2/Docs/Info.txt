@@ -1,3 +1,13 @@
 Config file:
 copy running-config flash:turma03-diogo-filipe-gustavo
 Destination filename [turma03-diogo-filipe-gustavo]
+
+CABOS:
+Router GE0/1 - SW24
+Tux1 E0 - SW1
+Tux2 E0 - SW2
+Tux4 E0 - SW4
+Tux4 E1 - SW5
+Bridge(1.2) - Router GE0/0
+
+NOTA IMPORTANTE: o router da sala a que nos ligamos ´e o .18, nao o .19
