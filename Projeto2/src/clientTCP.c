@@ -12,6 +12,49 @@
 #include <strings.h>
 
 
+/*
+ * Handles everything related to initializing communications through the sockets
+ * @param SERVER_ADDR - IP
+ * @param SERVER_PORT - Port
+ * @return - socket file descriptor
+ */
+int initSocket(char* SERVER_ADDR, int SERVER_PORT){
+	int sockfd;
+	char response[256];
+	struct sockaddr_in server_addr;
+	
+	/*server address handling*/
+	bzero((char*)&server_addr,sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDR);	/*32 bit Internet address network byte ordered*/
+	server_addr.sin_port = htons(SERVER_PORT);		/*server TCP port must be network byte ordered */
+    
+
+	/*open a TCP socket*/
+	if ((sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0) {
+    		perror("socket()");
+        	exit(0);
+   	}
+
+
+	/*connect to the server*/
+   	if(connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
+       	perror("connect()");
+		exit(0);
+	}
+	memset(response, 0, 256);
+	read(sockfd, response, 50);
+	printf("Server response: %s\n", response);
+
+	return sockfd;
+}
+
+
+/*
+ * 
+ * @param hostname - hostname to convert to IP
+ * @return - IP associated to hostname
+ */
 char* getIP(char* hostname) {
 	struct hostent *h;
 
@@ -23,8 +66,15 @@ char* getIP(char* hostname) {
     return inet_ntoa(*((struct in_addr *)h->h_addr));
 }
 
-char* interact(int sockfd, char* cmd){
-	char response[256], separator[] = "-----------------------\n\n";;
+
+/*
+ * Sends a command to the server and awaits for a response.
+ * @param sockfd - socket file descriptor
+ * @param cmd - cmd to be sent to server
+ * @param response - response from the server
+ */
+void interact(int sockfd, char* cmd, char* response){
+	char separator[] = "-----------------------\n\n";;
 
 	int bytes = write(sockfd, cmd, strlen(cmd));
 	printf("User cmd: %s\n",cmd);
@@ -35,8 +85,6 @@ char* interact(int sockfd, char* cmd){
 	read(sockfd, response, 50);
 	printf("Server response: %s\n", response);
 	printf("%s",separator);
-
-	return (char*)response;
 }
 
 
@@ -48,9 +96,9 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	}
 
 
-	int	sockfd, bytes, SERVER_PORT = 21;
+	int	sockfd, sockfd2, bytes, SERVER_PORT = 21;
 	struct sockaddr_in server_addr;
-	char hostname[128], path[128], user[128], pass[128], response[128], * SERVER_ADDR;
+	char hostname[128], path[128], user[128], pass[128], cmd[128], response[128], *SERVER_ADDR;
 
 
 	/*get info from url (with reg expr)*/
@@ -72,53 +120,29 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	printf("IP Address : %s\n\n",SERVER_ADDR);
 	
 
-	/*server address handling*/
-	bzero((char*)&server_addr,sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDR);	/*32 bit Internet address network byte ordered*/
-	server_addr.sin_port = htons(SERVER_PORT);		/*server TCP port must be network byte ordered */
-    
+	/*init socket*/
+	sockfd=initSocket(SERVER_ADDR, SERVER_PORT);
 
-	/*open a TCP socket*/
-	if ((sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0) {
-    		perror("socket()");
-        	exit(0);
-   	}
-
-
-	/*connect to the server*/
-   	if(connect(sockfd, 
-           (struct sockaddr *)&server_addr, 
-		   sizeof(server_addr)) < 0){
-       	perror("connect()");
-		exit(0);
-	}
-	memset(response, 0, 256);
-	read(sockfd, response, 50);
-	printf("Server response: %s\n", response);
-
-
-	char cmd[128];
 
    	/*send user*/
 	strcpy(cmd, "USER ");
 	strcat(cmd, user);
 	strcat(cmd, "\n");
-	interact(sockfd,cmd);
+	interact(sockfd,cmd,response);
 	
 
 	/*send pass*/
 	strcpy(cmd, "PASS ");
 	strcat(cmd, pass);
 	strcat(cmd, "\n");
-	interact(sockfd,cmd);
+	interact(sockfd,cmd,response);
 
 
 	/*pasv*/
 	int pasv[6]; //ip[4]+port[2]
 	strcpy(cmd, "PASV");
 	strcat(cmd, "\n");
-	interact(sockfd,cmd);
+	interact(sockfd,cmd,response);
 	sscanf(response, "%*[^(](%d,%d,%d,%d,%d,%d)\n", &pasv[0], &pasv[1], &pasv[2], &pasv[3], &pasv[4], &pasv[5]);
 	
 	/*get info about port on which server will be listening*/
@@ -127,7 +151,7 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	printf("NEW SOCKET:\nIP: %s\nPORT: %d\n",SERVER_ADDR,SERVER_PORT);
 
 	/*open socket for the server listener*/
-	//TO DO: abrir socket para os novos SERVER_ADDR e SERVER_PORT
+	sockfd2=initSocket(SERVER_ADDR, SERVER_PORT);
 	//...
 
 
@@ -136,7 +160,7 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	strcpy(cmd, "RETR ");
 	strcat(cmd, path);
 	strcat(cmd, "\n");
-	interact(sockfd,cmd);
+	interact(sockfd,cmd,response);
 
 
 	close(sockfd);
