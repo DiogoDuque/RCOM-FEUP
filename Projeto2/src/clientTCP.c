@@ -41,11 +41,11 @@ int initSocket(char* SERVER_ADDR, int SERVER_PORT){
    	if(connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
        	perror("connect()");
 		exit(0);
-	}
+	}/*
 	memset(response, 0, 256);
 	read(sockfd, response, 50);
 	printf("Server response: %s\n", response);
-
+*/
 	return sockfd;
 }
 
@@ -82,7 +82,7 @@ void interact(int sockfd, char* cmd, char* response){
 		printf("Warning: cmd may have not been fully sent...\n");
 
 	memset(response, 0, 256);
-	read(sockfd, response, 50);
+	read(sockfd, response, 100);
 	printf("Server response: %s\n", response);
 	printf("%s",separator);
 }
@@ -123,6 +123,9 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	/*init socket*/
 	sockfd=initSocket(SERVER_ADDR, SERVER_PORT);
 
+    memset(response, 0, 256);
+	read(sockfd, response, 50);
+	printf("Server response: %s\n", response);
 
    	/*send user*/
 	strcpy(cmd, "USER ");
@@ -148,16 +151,18 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	/*get info about port on which server will be listening*/
 	sprintf(SERVER_ADDR, "%d.%d.%d.%d", pasv[0], pasv[1], pasv[2], pasv[3]);
 	SERVER_PORT=pasv[4]*256 + pasv[5];
-	printf("NEW SOCKET:\nIP: %s\nPORT: %d\n",SERVER_ADDR,SERVER_PORT);
+    printf("NEW SOCKET:\nIP: %s\nPORT: %d\n\n",SERVER_ADDR,SERVER_PORT);
 
-	/*open socket for the server listener*/
+    //specify type (binary/image)
+    strcpy(cmd, "TYPE I\n");
+    interact(sockfd, cmd, response);
+
+    /*open socket for the server listener*/
 	sockfd2=initSocket(SERVER_ADDR, SERVER_PORT);
 	//...
 
-
-
-	/*ask for the file*/
-	strcpy(cmd, "RETR ");
+    /*ask for the file*/
+    strcpy(cmd, "RETR ");
 	strcat(cmd, path);
 	strcat(cmd, "\n");
 	interact(sockfd,cmd,response);
