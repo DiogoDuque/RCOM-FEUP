@@ -163,11 +163,19 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 
     /*ask for the file*/
     strcpy(cmd, "RETR ");
-	strcat(cmd, path);
+    strcat(cmd, path);
 	strcat(cmd, "\n");
 	interact(sockfd,cmd,response);
 
+    FILE * file = fopen("robots.txt", "w");
 
+    memset(response, 0, 256);
+    int len = read(sockfd2, response, 50);
+    if (len > 0) {
+		fwrite(response,sizeof(char),len,file);
+	}
+
+    close(sockfd2);
 	close(sockfd);
 	exit(0);
 }
