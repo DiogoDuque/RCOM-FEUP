@@ -167,6 +167,12 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	strcat(cmd, "\n");
 	interact(sockfd,cmd,response);
 
+    char * fileName = "zzz";
+
+    while (fileName != path){
+        fileName = strtok(path, "/");
+    }
+
     FILE * file = fopen("robots.txt", "w");
 
     memset(response, 0, 256);
@@ -174,6 +180,9 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
     if (len > 0) {
 		fwrite(response,sizeof(char),len,file);
 	}
+
+    strcpy(cmd, "QUIT\n");
+	interact(sockfd,cmd,response);
 
     close(sockfd2);
 	close(sockfd);
