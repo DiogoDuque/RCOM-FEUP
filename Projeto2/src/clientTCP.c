@@ -87,35 +87,127 @@ void interact(int sockfd, char* cmd, char* response){
 	printf("%s",separator);
 }
 
+/*
+ * Gets the filename from path
+ */
+char* getFilename(char* path){
+	int it=0;
+	char* retr;
+	int started=0;
+	while(path[it]!='\0'){
+		if(path[it]=='/')retr=&path[it+1];
+		++it;
+	}
+	return retr;
+}
 
-int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
+int lastIndexOf(const char * s, char target)
+{
+   int ret = -1;
+   int curIdx = 0;
+   while(s[curIdx] != '\0')
+   {
+      if (s[curIdx] == target) ret = curIdx;
+      curIdx++;
+   }
+   return ret;
+}
 
-	if(argc != 2){
+int getFileSize(const char* response) {
+	int index = lastIndexOf(response, '(') + 1;
+	int length = lastIndexOf(response, ')') - index - 6;
+	char substr[length];
+	memcpy(substr, &response[index], length);
+	substr[length] = '\0';
+	return atoi(substr);
+	
+}
+
+void printPercentage(int current, int total) {
+	float p = (float)current / (float)total;
+	int perc = p * 100;
+	if (p >= 1) printf("\r[--------------------] (%d%)", perc);
+	else if (p > 0.95) printf("\r[------------------- ] (%d%)", perc);
+	else if (p > 0.90) printf("\r[------------------  ] (%d%)", perc);
+	else if (p > 0.85) printf("\r[-----------------   ] (%d%)", perc);
+	else if (p > 0.80) printf("\r[----------------    ] (%d%)", perc);
+	else if (p > 0.75) printf("\r[---------------     ] (%d%)", perc);
+	else if (p > 0.70) printf("\r[--------------      ] (%d%)", perc);
+	else if (p > 0.65) printf("\r[-------------       ] (%d%)", perc);
+	else if (p > 0.60) printf("\r[------------        ] (%d%)", perc);
+	else if (p > 0.55) printf("\r[-----------         ] (%d%)", perc);
+	else if (p > 0.50) printf("\r[----------          ] (%d%)", perc);
+	else if (p > 0.45) printf("\r[---------           ] (%d%)", perc);
+	else if (p > 0.40) printf("\r[--------            ] (%d%)", perc);
+	else if (p > 0.35) printf("\r[-------             ] (%d%)", perc);
+	else if (p > 0.30) printf("\r[------              ] (%d%)", perc);
+	else if (p > 0.25) printf("\r[-----               ] (%d%)", perc);
+	else if (p > 0.20) printf("\r[----                ] (%d%)", perc);
+	else if (p > 0.15) printf("\r[---                 ] (%d%)", perc);
+	else if (p > 0.10) printf("\r[--                  ] (%d%)", perc);
+	else if (p > 0.05) printf("\r[-                   ] (%d%)", perc);
+	else printf("\r[                    ] (%d%)", perc);
+}
+
+// ftp://ftp.up.pt/pub/robots.txt
+// ftp://ftp.up.pt/pub/fedora-epel/fullfilelist
+int main(int argc, char** argv){ 
+	char hostname[128], path[128], user[128], pass[128];
+
+	/*if(argc != 2){
 		perror("Usage: ftp ftp://[<user>:<password>@]<host>/<url-path>");
 		exit(0);
-	}
+	}*/
 
+	if (argc == 1){
+		char* pos;
+		printf("Enter host: ");
+		fgets(hostname, sizeof(hostname), stdin);
+		if ((pos=strchr(hostname, '\n')) != NULL) *pos = '\0';
 
-	int	sockfd, sockfd2, bytes, SERVER_PORT = 21;
-	struct sockaddr_in server_addr;
-	char hostname[128], path[128], user[128], pass[128], cmd[128], response[128], *SERVER_ADDR;
+		printf("Enter host path: ");
+		fgets(path, sizeof(path), stdin);
+		if ((pos=strchr(path, '\n')) != NULL) *pos = '\0';
 
-
-	/*get info from url (with reg expr)*/
-	if(sscanf(argv[1], "ftp://%[^:]:%[^@]@%[^/]/%s\n", user, pass, hostname, path) == 4){
-		printf("Host: %s\n", hostname);
-		printf("Path: %s\n", path);
-		printf("User: %s\n", user);
-		printf("Pass: %s\n", pass);
+		printf("Enter username (empty for Guest): ");
+		fgets(user, sizeof(user), stdin);
+		if ((pos=strchr(user, '\n')) != NULL) *pos = '\0';
+		
+		if (strlen(user) == 0) {
+			strcpy(user, "anonymous");
+			strcpy(pass, " ");
+		} else {
+			printf("Enter password: ");
+			fgets(pass, sizeof(pass), stdin);
+			if ((pos=strchr(pass, '\n')) != NULL) *pos = '\0';
+		}
+		printf("Host: %s\nHost path: %s\nUser: %s\n", hostname, path, user);
+	} else if (argc == 2) {
+		/*get info from url (with reg expr)*/
+		if(sscanf(argv[1], "ftp://%[^:]:%[^@]@%[^/]/%s\n", user, pass, hostname, path) == 4){
+			printf("Host: %s\n", hostname);
+			printf("Path: %s\n", path);
+			printf("User: %s\n", user);
+			printf("Pass: %s\n", pass);
 		}else if(sscanf(argv[1], "ftp://%[^/]/%s\n", hostname, path) == 2){
-		printf("Host: %s\n", hostname);
-		printf("Path: %s\n", path);
-		strcpy(user, "Anonymous");
-		strcpy(pass, "1213456789");
-	}else {
-		perror("Invalid URL! Usage: ftp ftp://[<user>:<password>@]<host>/<url-path>");
+			printf("Host: %s\n", hostname);
+			printf("Path: %s\n", path);
+			strcpy(user, "anonymous");
+			strcpy(pass, " ");
+		}else {
+			perror("Invalid URL! Usage: ftp ftp://[<user>:<password>@]<host>/<url-path>");
+			exit(0);
+		}
+	} else {
+		perror("Invalid arguments! Usage: ftp ftp://[<user>:<password>@]<host>/<url-path>");
 		exit(0);
 	}
+	char* filename = getFilename(path);
+	int	sockfd, sockfd2, bytes, SERVER_PORT = 21;
+	struct sockaddr_in server_addr;
+	char cmd[128], response[128], *SERVER_ADDR;
+
+	
 	SERVER_ADDR = getIP(hostname);
 	printf("IP Address : %s\n\n",SERVER_ADDR);
 	
@@ -167,20 +259,20 @@ int main(int argc, char** argv){ // ftp://ftp.up.pt/pub/robots.txt
 	strcat(cmd, "\n");
 	interact(sockfd,cmd,response);
 
-    char * fileName = "zzz";
 
-    while (fileName != path){
-        fileName = strtok(path, "/");
-    }
-
-    FILE * file = fopen("robots.txt", "w");
-
+	FILE * file = fopen(filename, "w");
+	int filesize = getFileSize(response);
     memset(response, 0, 256);
-    int len = read(sockfd2, response, 50);
-    if (len > 0) {
+
+    int len;
+	int pak = 0;
+	printf("Downloading file: %s\n", filename);
+    while ((len = read(sockfd2, response, 255)) > 0) {
+		printPercentage(pak++*255, filesize);
 		fwrite(response,sizeof(char),len,file);
 	}
-
+	printf("\n\n");
+	
     strcpy(cmd, "QUIT\n");
 	interact(sockfd,cmd,response);
 
