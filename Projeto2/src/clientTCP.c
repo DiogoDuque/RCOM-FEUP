@@ -99,6 +99,18 @@ char* getFilename(char* path){
 		++it;
 	}
 	return retr;
+
+    /*
+    char * fileName;
+    char * token;
+    char * rest = path;
+
+    while((token = strtok_r(rest, "/", &rest))){
+        fileName = token;
+    }
+
+    return fileName;
+    */
 }
 
 int lastIndexOf(const char * s, char target)
@@ -126,27 +138,52 @@ int getFileSize(const char* response) {
 void printPercentage(int current, int total) {
 	float p = (float)current / (float)total;
 	int perc = p * 100;
-	if (p >= 1) printf("\r[--------------------] (%d%)", perc);
-	else if (p > 0.95) printf("\r[------------------- ] (%d%)", perc);
-	else if (p > 0.90) printf("\r[------------------  ] (%d%)", perc);
-	else if (p > 0.85) printf("\r[-----------------   ] (%d%)", perc);
-	else if (p > 0.80) printf("\r[----------------    ] (%d%)", perc);
-	else if (p > 0.75) printf("\r[---------------     ] (%d%)", perc);
-	else if (p > 0.70) printf("\r[--------------      ] (%d%)", perc);
-	else if (p > 0.65) printf("\r[-------------       ] (%d%)", perc);
-	else if (p > 0.60) printf("\r[------------        ] (%d%)", perc);
-	else if (p > 0.55) printf("\r[-----------         ] (%d%)", perc);
-	else if (p > 0.50) printf("\r[----------          ] (%d%)", perc);
-	else if (p > 0.45) printf("\r[---------           ] (%d%)", perc);
-	else if (p > 0.40) printf("\r[--------            ] (%d%)", perc);
-	else if (p > 0.35) printf("\r[-------             ] (%d%)", perc);
-	else if (p > 0.30) printf("\r[------              ] (%d%)", perc);
-	else if (p > 0.25) printf("\r[-----               ] (%d%)", perc);
-	else if (p > 0.20) printf("\r[----                ] (%d%)", perc);
-	else if (p > 0.15) printf("\r[---                 ] (%d%)", perc);
-	else if (p > 0.10) printf("\r[--                  ] (%d%)", perc);
-	else if (p > 0.05) printf("\r[-                   ] (%d%)", perc);
-	else printf("\r[                    ] (%d%)", perc);
+
+    if(perc > 100) perc = 100;
+    /*
+	if (p >= 1)        printf("\r[--------------------] (%d%%)", perc);
+	else if (p > 0.95) printf("\r[------------------- ] (%d%%)", perc);
+	else if (p > 0.90) printf("\r[------------------  ] (%d%%)", perc);
+	else if (p > 0.85) printf("\r[-----------------   ] (%d%%)", perc);
+	else if (p > 0.80) printf("\r[----------------    ] (%d%%)", perc);
+	else if (p > 0.75) printf("\r[---------------     ] (%d%%)", perc);
+	else if (p > 0.70) printf("\r[--------------      ] (%d%%)", perc);
+	else if (p > 0.65) printf("\r[-------------       ] (%d%%)", perc);
+	else if (p > 0.60) printf("\r[------------        ] (%d%%)", perc);
+	else if (p > 0.55) printf("\r[-----------         ] (%d%%)", perc);
+	else if (p > 0.50) printf("\r[----------          ] (%d%%)", perc);
+	else if (p > 0.45) printf("\r[---------           ] (%d%%)", perc);
+	else if (p > 0.40) printf("\r[--------            ] (%d%%)", perc);
+	else if (p > 0.35) printf("\r[-------             ] (%d%%)", perc);
+	else if (p > 0.30) printf("\r[------              ] (%d%%)", perc);
+	else if (p > 0.25) printf("\r[-----               ] (%d%%)", perc);
+	else if (p > 0.20) printf("\r[----                ] (%d%%)", perc);
+	else if (p > 0.15) printf("\r[---                 ] (%d%%)", perc);
+	else if (p > 0.10) printf("\r[--                  ] (%d%%)", perc);
+	else if (p > 0.05) printf("\r[-                   ] (%d%%)", perc);
+	else               printf("\r[                    ] (%d%%)", perc);
+    */
+    if (p >= 1)        printf("\033[1A\033[K[--------------------] (%d%%)\n", perc);
+	else if (p > 0.95) printf("\033[1A\033[K[------------------- ] (%d%%)\n", perc);
+	else if (p > 0.90) printf("\033[1A\033[K[------------------  ] (%d%%)\n", perc);
+	else if (p > 0.85) printf("\033[1A\033[K[-----------------   ] (%d%%)\n", perc);
+	else if (p > 0.80) printf("\033[1A\033[K[----------------    ] (%d%%)\n", perc);
+	else if (p > 0.75) printf("\033[1A\033[K[---------------     ] (%d%%)\n", perc);
+	else if (p > 0.70) printf("\033[1A\033[K[--------------      ] (%d%%)\n", perc);
+	else if (p > 0.65) printf("\033[1A\033[K[-------------       ] (%d%%)\n", perc);
+	else if (p > 0.60) printf("\033[1A\033[K[------------        ] (%d%%)\n", perc);
+	else if (p > 0.55) printf("\033[1A\033[K[-----------         ] (%d%%)\n", perc);
+	else if (p > 0.50) printf("\033[1A\033[K[----------          ] (%d%%)\n", perc);
+	else if (p > 0.45) printf("\033[1A\033[K[---------           ] (%d%%)\n", perc);
+	else if (p > 0.40) printf("\033[1A\033[K[--------            ] (%d%%)\n", perc);
+	else if (p > 0.35) printf("\033[1A\033[K[-------             ] (%d%%)\n", perc);
+	else if (p > 0.30) printf("\033[1A\033[K[------              ] (%d%%)\n", perc);
+	else if (p > 0.25) printf("\033[1A\033[K[-----               ] (%d%%)\n", perc);
+	else if (p > 0.20) printf("\033[1A\033[K[----                ] (%d%%)\n", perc);
+	else if (p > 0.15) printf("\033[1A\033[K[---                 ] (%d%%)\n", perc);
+	else if (p > 0.10) printf("\033[1A\033[K[--                  ] (%d%%)\n", perc);
+	else if (p > 0.05) printf("\033[1A\033[K[-                   ] (%d%%)\n", perc);
+	else               printf("\033[1A\033[K[                    ] (%d%%)\n", perc);
 }
 
 // ftp://ftp.up.pt/pub/robots.txt
