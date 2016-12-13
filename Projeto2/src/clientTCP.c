@@ -11,6 +11,9 @@
 #include <netdb.h>
 #include <strings.h>
 
+#define PATH_MAX        4096
+
+char prog_bar[30];
 
 /*
  * Handles everything related to initializing communications through the sockets
@@ -20,7 +23,7 @@
  */
 int initSocket(char* SERVER_ADDR, int SERVER_PORT){
 	int sockfd;
-	char response[256];
+	char response[PATH_MAX];
 	struct sockaddr_in server_addr;
 	
 	/*server address handling*/
@@ -42,8 +45,8 @@ int initSocket(char* SERVER_ADDR, int SERVER_PORT){
        	perror("connect()");
 		exit(0);
 	}/*
-	memset(response, 0, 256);
-	read(sockfd, response, 50);
+	memset(response, 0, sizeof(response));
+	read(sockfd, response, PATH_MAX);
 	printf("Server response: %s\n", response);
 */
 	return sockfd;
@@ -81,8 +84,8 @@ void interact(int sockfd, char* cmd, char* response){
 	if(bytes != strlen(cmd))
 		printf("Warning: cmd may have not been fully sent...\n");
 
-	memset(response, 0, 256);
-	read(sockfd, response, 100);
+	memset(response, 0, sizeof(response));
+	read(sockfd, response, PATH_MAX);
 	printf("Server response: %s\n", response);
 	printf("%s",separator);
 }
@@ -138,31 +141,38 @@ int getFileSize(const char* response) {
 void printPercentage(int current, int total) {
 	float p = (float)current / (float)total;
 	int perc = p * 100;
+	char str[30];
 
     if(perc > 100) perc = 100;
+    
+	if (p >= 1)        sprintf(str, "\r[--------------------] (%d%%)", perc);
+	else if (p > 0.95) sprintf(str, "\r[------------------- ] (%d%%)", perc);
+	else if (p > 0.90) sprintf(str, "\r[------------------  ] (%d%%)", perc);
+	else if (p > 0.85) sprintf(str, "\r[-----------------   ] (%d%%)", perc);
+	else if (p > 0.80) sprintf(str, "\r[----------------    ] (%d%%)", perc);
+	else if (p > 0.75) sprintf(str, "\r[---------------     ] (%d%%)", perc);
+	else if (p > 0.70) sprintf(str, "\r[--------------      ] (%d%%)", perc);
+	else if (p > 0.65) sprintf(str, "\r[-------------       ] (%d%%)", perc);
+	else if (p > 0.60) sprintf(str, "\r[------------        ] (%d%%)", perc);
+	else if (p > 0.55) sprintf(str, "\r[-----------         ] (%d%%)", perc);
+	else if (p > 0.50) sprintf(str, "\r[----------          ] (%d%%)", perc);
+	else if (p > 0.45) sprintf(str, "\r[---------           ] (%d%%)", perc);
+	else if (p > 0.40) sprintf(str, "\r[--------            ] (%d%%)", perc);
+	else if (p > 0.35) sprintf(str, "\r[-------             ] (%d%%)", perc);
+	else if (p > 0.30) sprintf(str, "\r[------              ] (%d%%)", perc);
+	else if (p > 0.25) sprintf(str, "\r[-----               ] (%d%%)", perc);
+	else if (p > 0.20) sprintf(str, "\r[----                ] (%d%%)", perc);
+	else if (p > 0.15) sprintf(str, "\r[---                 ] (%d%%)", perc);
+	else if (p > 0.10) sprintf(str, "\r[--                  ] (%d%%)", perc);
+	else if (p > 0.05) sprintf(str, "\r[-                   ] (%d%%)", perc);
+	else               sprintf(str, "\r[                    ] (%d%%)", perc);
+
+	if (prog_bar != str){
+		write(STDOUT_FILENO, str, strlen(str));
+
+		strcpy(prog_bar, str);
+	}
     /*
-	if (p >= 1)        printf("\r[--------------------] (%d%%)", perc);
-	else if (p > 0.95) printf("\r[------------------- ] (%d%%)", perc);
-	else if (p > 0.90) printf("\r[------------------  ] (%d%%)", perc);
-	else if (p > 0.85) printf("\r[-----------------   ] (%d%%)", perc);
-	else if (p > 0.80) printf("\r[----------------    ] (%d%%)", perc);
-	else if (p > 0.75) printf("\r[---------------     ] (%d%%)", perc);
-	else if (p > 0.70) printf("\r[--------------      ] (%d%%)", perc);
-	else if (p > 0.65) printf("\r[-------------       ] (%d%%)", perc);
-	else if (p > 0.60) printf("\r[------------        ] (%d%%)", perc);
-	else if (p > 0.55) printf("\r[-----------         ] (%d%%)", perc);
-	else if (p > 0.50) printf("\r[----------          ] (%d%%)", perc);
-	else if (p > 0.45) printf("\r[---------           ] (%d%%)", perc);
-	else if (p > 0.40) printf("\r[--------            ] (%d%%)", perc);
-	else if (p > 0.35) printf("\r[-------             ] (%d%%)", perc);
-	else if (p > 0.30) printf("\r[------              ] (%d%%)", perc);
-	else if (p > 0.25) printf("\r[-----               ] (%d%%)", perc);
-	else if (p > 0.20) printf("\r[----                ] (%d%%)", perc);
-	else if (p > 0.15) printf("\r[---                 ] (%d%%)", perc);
-	else if (p > 0.10) printf("\r[--                  ] (%d%%)", perc);
-	else if (p > 0.05) printf("\r[-                   ] (%d%%)", perc);
-	else               printf("\r[                    ] (%d%%)", perc);
-    */
     if (p >= 1)        printf("\033[1A\033[K[--------------------] (%d%%)\n", perc);
 	else if (p > 0.95) printf("\033[1A\033[K[------------------- ] (%d%%)\n", perc);
 	else if (p > 0.90) printf("\033[1A\033[K[------------------  ] (%d%%)\n", perc);
@@ -183,13 +193,13 @@ void printPercentage(int current, int total) {
 	else if (p > 0.15) printf("\033[1A\033[K[---                 ] (%d%%)\n", perc);
 	else if (p > 0.10) printf("\033[1A\033[K[--                  ] (%d%%)\n", perc);
 	else if (p > 0.05) printf("\033[1A\033[K[-                   ] (%d%%)\n", perc);
-	else               printf("\033[1A\033[K[                    ] (%d%%)\n", perc);
+	else               printf("\033[1A\033[K[                    ] (%d%%)\n", perc);*/
 }
 
 // ftp://ftp.up.pt/pub/robots.txt
 // ftp://ftp.up.pt/pub/fedora-epel/fullfilelist
 int main(int argc, char** argv){ 
-	char hostname[128], path[128], user[128], pass[128];
+	char hostname[PATH_MAX], path[PATH_MAX], user[PATH_MAX], pass[PATH_MAX];
 
 	/*if(argc != 2){
 		perror("Usage: ftp ftp://[<user>:<password>@]<host>/<url-path>");
@@ -239,10 +249,10 @@ int main(int argc, char** argv){
 		perror("Invalid arguments! Usage: ftp ftp://[<user>:<password>@]<host>/<url-path>");
 		exit(0);
 	}
-	char* filename = getFilename(path);
+	char * filename = getFilename(path);
 	int	sockfd, sockfd2, bytes, SERVER_PORT = 21;
 	struct sockaddr_in server_addr;
-	char cmd[128], response[128], *SERVER_ADDR;
+	char cmd[PATH_MAX], response[PATH_MAX], *SERVER_ADDR;
 
 	
 	SERVER_ADDR = getIP(hostname);
@@ -252,8 +262,8 @@ int main(int argc, char** argv){
 	/*init socket*/
 	sockfd=initSocket(SERVER_ADDR, SERVER_PORT);
 
-    memset(response, 0, 256);
-	read(sockfd, response, 50);
+    memset(response, 0, sizeof(response));
+	read(sockfd, response, PATH_MAX);
 	printf("Server response: %s\n", response);
 
    	/*send user*/
@@ -299,13 +309,13 @@ int main(int argc, char** argv){
 
 	FILE * file = fopen(filename, "w");
 	int filesize = getFileSize(response);
-    memset(response, 0, 256);
+    memset(response, 0, sizeof(response));
 
     int len;
 	int pak = 0;
 	printf("Downloading file: %s\n", filename);
-    while ((len = read(sockfd2, response, 255)) > 0) {
-		printPercentage(pak++*255, filesize);
+    while ((len = read(sockfd2, response, 1024)) > 0) {
+		printPercentage(pak++*1024, filesize);
 		fwrite(response,sizeof(char),len,file);
 	}
 	printf("\n\n");
@@ -317,5 +327,4 @@ int main(int argc, char** argv){
 	close(sockfd);
 	exit(0);
 }
-
 
