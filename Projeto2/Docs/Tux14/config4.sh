@@ -1,4 +1,5 @@
 /etc/init.d/networking restart
+ip route flush table all
 ifconfig eth0 172.16.10.254/24
 ifconfig eth1 172.16.11.253/24
 
